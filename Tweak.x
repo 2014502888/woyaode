@@ -153,100 +153,30 @@ static void JokerPresentEditorForMessage(id msg, UIViewController *host) {
 %end
 
 #pragma mark - Hook: 聊天页 (BaseMsgContentViewController)
-// 长按菜单: 拿微信菜单数组, 复制一个已有菜单项改成"小丑"追加(不改微信原有项)。
-static id PJDuplicateItem(id sample) {
-    @try {
-        Class cls = [sample class];
-        id inst = [[cls alloc] init];
-        unsigned int n = 0;
-        Ivar *ivars = class_copyIvarList(cls, &n);
-        for (unsigned int i = 0; i < n; i++) {
-            Ivar iv = ivars[i];
-            const char *name = ivar_getName(iv);
-            const char *type = ivar_getTypeEncoding(iv);
-            NSString *key = [NSString stringWithUTF8String:name];
-            @try {
-                id val = [sample valueForKey:key];
-                if (val) [inst setValue:val forKey:key];
-            } @catch(id e) {}
-        }
-        free(ivars);
-        return inst;
-    } @catch(id e) { return nil; }
-}
-static void PJDumpMenuItems(NSArray *items) {
-    @try {
-        NSMutableString *s = [NSMutableString string];
-        [s appendFormat:@"count=%lu\n", (unsigned long)items.count];
-        for (NSUInteger i = 0; i < items.count; i++) {
-            id it = items[i];
-            [s appendFormat:@"[%lu] class=%@\n", (unsigned long)i, [it class]];
-            for (NSString *key in @[@"title", @"name", @"text", @"titleText", @"actionName"]) {
-                @try {
-                    NSString *v = [it valueForKey:key];
-                    if (v) [s appendFormat:@"    %@=%@\n", key, v];
-                } @catch(id e) {}
-            }
-        }
-        [s writeToFile:[NSTemporaryDirectory() stringByAppendingPathComponent:@"pj_menu_dump.txt"] atomically:YES encoding:NSUTF8StringEncoding error:nil];
-    } @catch(id e) {}
+static UIScrollView *PJFindAnyScroll(UIView *v) {
+    if ([v isKindOfClass:[UIScrollView class]]) return (UIScrollView *)v;
+    for (UIView *s in v.subviews) { UIScrollView *r = PJFindAnyScroll(s); if (r) return r; }
+    return nil;
 }
 %hook BaseMsgContentViewController
 - (void)viewDidAppear:(BOOL)animated {
     %orig;
     @try {
-        [@"chat viewDidAppear v2" writeToFile:[NSTemporaryDirectory() stringByAppendingPathComponent:@"pj_mark.txt"] atomically:YES encoding:NSUTF8StringEncoding error:nil];
-    } @catch(id e){}
-    @try {
-        NSString *path = [NSTemporaryDirectory() stringByAppendingPathComponent:@"pj_classes.txt"];
-        [@"START\n" writeToFile:path atomically:YES encoding:NSUTF8StringEncoding error:nil];
-        int n = objc_getClassList(NULL, 0);
-        Class *classes = (Class *)malloc(sizeof(Class) * (n+1));
-        objc_getClassList(classes, n);
-        SEL target = @selector(chatMenuController:WithArray:);
-        for (int i = 0; i < n; i++) {
-            @try {
-                Class c = classes[i];
-                const char *name = class_getName(c);
-                if (class_respondsToSelector(c, target)) {
-                    NSString *line = [NSString stringWithFormat:@"HIT => %s\n", name];
-                    NSFileHandle *fh = [NSFileHandle fileHandleForWritingAtPath:path];
-                    [fh seekToEndOfFile];
-                    [fh writeData:[line dataUsingEncoding:NSUTF8StringEncoding]];
-                    [fh closeFile];
-                }
-            } @catch(id e) {}
+        UIScrollView *sv = PJFindAnyScroll(self.view);
+        if (!sv) return;
+        for (UIGestureRecognizer *g in sv.gestureRecognizers) {
+            if ([g isKindOfClass:[UILongPressGestureRecognizer class]] && ((UILongPressGestureRecognizer *)g).minimumPressDuration == 0.9) return;
         }
-        free(classes);
-        NSFileHandle *fh = [NSFileHandle fileHandleForWritingAtPath:path];
-        [fh seekToEndOfFile];
-        [fh writeData:[@"DONE\n" dataUsingEncoding:NSUTF8StringEncoding]];
-        [fh closeFile];
+        UILongPressGestureRecognizer *lp = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(pjJokerLong:)];
+        lp.minimumPressDuration = 0.9;
+        [sv addGestureRecognizer:lp];
     } @catch(id e){}
 }
-- (NSArray *)chatMenuController:(id)menuVC WithArray:(NSArray *)array {
-    NSArray *items = %orig;
-    @try { PJDumpMenuItems(items); } @catch(id e){}
-    if (!JokerEnabled() || items.count == 0) return items;
+- (void)pjJokerLong:(UILongPressGestureRecognizer *)g {
+    if (g.state != UIGestureRecognizerStateBegan) return;
     @try {
-        NSMutableArray *m = [items mutableCopy];
-        id copy = PJDuplicateItem(items.firstObject);
-        if (copy) {
-            [copy setValue:@"小丑" forKey:@"title"];
-            [m addObject:copy];
-        }
-        return m;
-    } @catch(id e) { return items; }
-}
-- (void)chatMenuController:(id)menuVC DidSelectItemMenu:(id)item {
-    %orig;
-    @try {
-        if (!JokerEnabled()) return;
-        NSString *t = [item valueForKey:@"title"];
-        if ([t isEqualToString:@"小丑"]) {
-            id msg = [self valueForKey:@"currentSelectedMessage"];
-            JokerPresentEditorForMessage(msg, self);
-        }
+        NSString *doc = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES).firstObject;
+        [[NSString stringWithFormat:@"LONGPRESS at %@", [NSDate date]] writeToFile:[doc stringByAppendingPathComponent:@"pj_longpress.txt"] atomically:YES encoding:NSUTF8StringEncoding error:nil];
     } @catch(id e){}
 }
 %end
