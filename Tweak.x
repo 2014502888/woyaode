@@ -183,12 +183,49 @@ static UIScrollView *PJFindAnyScroll(UIView *v) {
 #pragma mark - Hook: 首页会话列表 (MainFrameViewController)
 // 原 dylib: misakaChatArray / misakaGroupArray / misakaOtherArray 分桶,
 // 这里在列表刷新后重建分桶, 并按开关决定是否插入分组头。
+static NSString *PJDoc(void) {
+    return NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES).firstObject;
+}
+static void PJDumpObjProps(id obj, NSMutableString *s, NSString *label) {
+    [s appendFormat:@"--- %@ class=%@ ---\n", label, [obj class]];
+    unsigned int np = 0;
+    objc_property_t *props = class_copyPropertyList([obj class], &np);
+    for (unsigned int i = 0; i < np; i++) {
+        const char *n = property_getName(props[i]);
+        [s appendFormat:@"  prop %s\n", n];
+    }
+    free(props);
+    unsigned int ni = 0;
+    Ivar *ivars = class_copyIvarList([obj class], &ni);
+    for (unsigned int i = 0; i < ni; i++) {
+        const char *n = ivar_getName(ivars[i]);
+        [s appendFormat:@"  ivar %s\n", n];
+    }
+    free(ivars);
+}
 %hook MainFrameViewController
 - (void)viewDidAppear:(BOOL)animated {
     %orig;
-    if (!MisakaGroupingEnabled()) return;
-    NSArray *sessions = [self valueForKey:@"sessions"] ?: [self valueForKey:@"dataArray"];
-    if (sessions) [[MisakaManager shared] rebuildFromSessions:sessions];
+    @try {
+        NSMutableString *s = [NSMutableString string];
+        PJDumpObjProps(self, s, @"HOME VC");
+        NSArray *candidates = @[@"sessions", @"dataArray", @"dataArr", @"sessionArray", @"arrData", @"m_packMainFrameViewController", @"allSession"];
+        NSArray *arr = nil;
+        for (NSString *k in candidates) {
+            @try {
+                id v = [self valueForKey:k];
+                if ([v isKindOfClass:[NSArray class]] && [(NSArray *)v count] > 0) {
+                    arr = v;
+                    [s appendFormat:@"FOUND ARRAY key=%@ count=%lu\n", k, (unsigned long)arr.count];
+                    break;
+                }
+            } @catch(id e){}
+        }
+        if (arr.count > 0) {
+            PJDumpObjProps(arr.firstObject, s, @"FIRST SESSION");
+        }
+        [s writeToFile:[PJDoc() stringByAppendingPathComponent:@"pj_home_dump.txt"] atomically:YES encoding:NSUTF8StringEncoding error:nil];
+    } @catch(id e){}
 }
 %end
 
