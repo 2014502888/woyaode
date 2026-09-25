@@ -152,19 +152,33 @@ static void JokerPresentEditorForMessage(id msg, UIViewController *host) {
 }
 %end
 
-#pragma mark - Hook: 聊天页 (BaseMsgContentViewController / MessageContentViewController)
-// 在长按消息的菜单里插入"小丑"项。
+#pragma mark - Hook: 聊天页 (BaseMsgContentViewController)
+// 8.0.78 长按菜单走微信自己的 chatMenuController:WithArray: 代理, 不是老的 UIMenuController。
 %hook BaseMsgContentViewController
-- (NSArray<UIMenuItem *> *)getMenuItemsForMessage:(id)msg {
+- (NSArray *)chatMenuController:(id)menuVC WithArray:(NSArray *)array {
     NSArray *items = %orig;
-    if (!JokerEnabled() || !msg) return items;
-    UIMenuItem *joker = [[UIMenuItem alloc] initWithTitle:@"小丑" action:@selector(pjJokerAction:)];
-    return [items arrayByAddingObject:joker];
+    if (!JokerEnabled() || items.count == 0) return items;
+    @try {
+        NSMutableArray *m = [items mutableCopy];
+        id sample = items.firstObject;
+        Class cls = [sample class];
+        id our = [[cls alloc] init];
+        [our setValue:@"小丑" forKey:@"title"];
+        [our setValue:@"小丑" forKey:@"name"];
+        [m addObject:our];
+        return m;
+    } @catch(id e) { return items; }
 }
-- (void)pjJokerAction:(id)sender {
-    // 取当前选中的消息对象(WeChat 内部 currentSelectedMessage)
-    id msg = [self valueForKey:@"currentSelectedMessage"];
-    JokerPresentEditorForMessage(msg, self);
+- (void)chatMenuController:(id)menuVC DidSelectItemMenu:(id)item {
+    %orig;
+    @try {
+        if (!JokerEnabled()) return;
+        NSString *t = [item valueForKey:@"title"] ?: [item valueForKey:@"name"];
+        if ([t isEqualToString:@"小丑"]) {
+            id msg = [self valueForKey:@"currentSelectedMessage"];
+            JokerPresentEditorForMessage(msg, self);
+        }
+    } @catch(id e) {}
 }
 %end
 
