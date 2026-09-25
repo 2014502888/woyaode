@@ -275,13 +275,38 @@ static void PJApplySort(id vc) {
         if ([tv isKindOfClass:[UITableView class]]) [tv reloadData];
     } @catch(id e){}
 }
+static NSArray *PJOrderKeys(void) {
+    return @[@"single", @"group", @"other"];
+}
+static NSArray *PJSortCells(NSArray *arr) {
+    NSMutableArray *single = [NSMutableArray new];
+    NSMutableArray *group = [NSMutableArray new];
+    NSMutableArray *other = [NSMutableArray new];
+    for (id cell in arr) {
+        NSString *un = [cell valueForKey:@"_userName"];
+        if ([un hasSuffix:@"@chatroom"]) [group addObject:cell];
+        else if ([un hasPrefix:@"gh_"]) [other addObject:cell];
+        else [single addObject:cell];
+    }
+    NSMutableArray *r = [NSMutableArray new];
+    [r addObjectsFromArray:single];
+    [r addObjectsFromArray:group];
+    [r addObjectsFromArray:other];
+    return r;
+}
 %hook NewMainFrameViewController
 - (void)viewDidAppear:(BOOL)animated {
     %orig;
     if (!MisakaGroupingEnabled()) return;
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.6 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-        PJApplySort(self);
-    });
+    @try {
+        id logic = [self valueForKey:@"m_mainFrameLogicController"];
+        NSMutableArray *arr = [logic valueForKey:@"m_frontSessionArray"];
+        if ([arr isKindOfClass:[NSMutableArray class]] && arr.count >= 2) {
+            NSArray *sorted = PJSortCells(arr);
+            [arr removeAllObjects];
+            [arr addObjectsFromArray:sorted];
+        }
+    } @catch(id e){}
 }
 %end
 #pragma mark - 简单设置页(对应 PJSettingViewController)
