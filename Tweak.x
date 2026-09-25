@@ -309,9 +309,15 @@ static NSArray *PJBuildDisplayList(id logic) {
     %orig;
     @try {
         id logic = [self valueForKey:@"m_mainFrameLogicController"];
-        id ti = [logic valueForKey:@"m_tableViewInfo"];
-        if (!ti) ti = [self valueForKey:@"m_tableViewInfo"];
-        NSString *s = [NSString stringWithFormat:@"logic=%@ ti=%@", [logic class], [ti class]];
+        NSMutableString *s = [NSMutableString string];
+        unsigned int n = 0;
+        Ivar *iv = class_copyIvarList([logic class], &n);
+        for (unsigned int i = 0; i < n; i++) {
+            const char *nm = ivar_getName(iv[i]);
+            const char *ty = ivar_getTypeEncoding(iv[i]);
+            [s appendFormat:@"%s : %s\n", nm, ty];
+        }
+        free(iv);
         [s writeToFile:[NSTemporaryDirectory() stringByAppendingPathComponent:@"pj_ti.txt"] atomically:YES encoding:NSUTF8StringEncoding error:nil];
     } @catch(id e){}
 }
