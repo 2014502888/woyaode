@@ -1,0 +1,5 @@
+Package: com.misakajoker.tweak
+Name: MisakaJokerTweak
+Version: 0.0.1
+Architecture: iphoneos-arm64
+Description: Misaka(会话分组) + Joker(消息小丑恶搞) 反推实现
