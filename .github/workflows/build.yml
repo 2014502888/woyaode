@@ -27,6 +27,6 @@ jobs:
         with:
           name: tweak-output
           path: |
-            /Users/runner/theos/packages/*.deb
+            packages/*.deb
             .theos/_/Products/DynamicLibraries/*.dylib
           if-no-files-found: warn
