@@ -265,41 +265,121 @@ static NSIndexPath *PJRemap(id self, NSIndexPath *ip) {
     } @catch(id e){}
     return ip;
 }
+static NSString * const kPJFolderMark = @"__PJ_FOLDER__";
+// 返回: 每行要么是 NSNumber(原始行号), 要么是 kPJFolderMark
+static NSArray *PJBuildDisplayList(id logic) {
+    @try {
+        NSArray *front = [logic valueForKey:@"m_frontSessionArray"];
+        if (![front isKindOfClass:[NSArray class]]) return nil;
+        NSMutableArray *singles = [NSMutableArray new];
+        NSMutableArray *groups = [NSMutableArray new];
+        NSMutableArray *others = [NSMutableArray new];
+        for (NSUInteger i = 0; i < front.count; i++) {
+            NSString *un = [front[i] valueForKey:@"_userName"];
+            if ([un hasSuffix:@"@chatroom"]) [groups addObject:@(i)];
+            else if ([un hasPrefix:@"gh_"]) [others addObject:@(i)];
+            else [singles addObject:@(i)];
+        }
+        NSMutableArray *r = [NSMutableArray new];
+        [r addObjectsFromArray:singles];
+        if (groups.count > 0) [r addObject:kPJFolderMark];
+        [r addObjectsFromArray:others];
+        return r;
+    } @catch(id e) { return nil; }
+}
+// 群列表 VC: 简单列出所有群名
+@interface PJGroupFolderVC : UITableViewController
+@property (nonatomic, strong) NSArray *groupUsernames;
+@end
+@implementation PJGroupFolderVC
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    self.title = @"群助手";
+}
+- (NSInteger)tableView:(UITableView *)t numberOfRowsInSection:(NSInteger)s { return self.groupUsernames.count; }
+- (UITableViewCell *)tableView:(UITableView *)t cellForRowAtIndexPath:(NSIndexPath *)ip {
+    UITableViewCell *c = [t dequeueReusableCellWithIdentifier:@"g"];
+    if (!c) c = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:@"g"];
+    c.textLabel.text = self.groupUsernames[ip.row];
+    return c;
+}
+@end
 %hook NewMainFrameViewController
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
     NSInteger c = %orig;
     if (!MisakaGroupingEnabled()) return c;
     @try {
-        id logic = [self valueForKey:@"m_mainFrameLogicController"];
-        NSArray *map = PJBuildRowMap(logic);
-        if (map) objc_setAssociatedObject(self, kPJRowMap, map, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+        NSArray *list = PJBuildDisplayList([self valueForKey:@"m_mainFrameLogicController"]);
+        if (list) return list.count;
     } @catch(id e){}
     return c;
 }
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)ip {
-    return %orig(tableView, PJRemap(self, ip));
+    if (MisakaGroupingEnabled()) {
+        @try {
+            NSArray *list = PJBuildDisplayList([self valueForKey:@"m_mainFrameLogicController"]);
+            if (list && ip.row < (NSInteger)list.count) {
+                id item = list[ip.row];
+                if ([item isEqual:kPJFolderMark]) {
+                    UITableViewCell *c = [tableView dequeueReusableCellWithIdentifier:@"pjfolder"];
+                    if (!c) c = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleValue1 reuseIdentifier:@"pjfolder"];
+                    c.textLabel.text = @"群助手";
+                    c.detailTextLabel.text = [NSString stringWithFormat:@"%lu个群", (unsigned long)(list.count - /*singles+others*/0)];
+                    c.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
+                    return c;
+                }
+                NSUInteger origRow = [item unsignedIntegerValue];
+                return %orig(tableView, [NSIndexPath indexPathForRow:origRow inSection:ip.section]);
+            }
+        } @catch(id e){}
+    }
+    return %orig;
 }
 - (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)ip {
-    return %orig(tableView, PJRemap(self, ip));
+    if (MisakaGroupingEnabled()) {
+        @try {
+            NSArray *list = PJBuildDisplayList([self valueForKey:@"m_mainFrameLogicController"]);
+            if (list && ip.row < (NSInteger)list.count) {
+                id item = list[ip.row];
+                if ([item isEqual:kPJFolderMark]) return 60;
+                NSUInteger origRow = [item unsignedIntegerValue];
+                return %orig(tableView, [NSIndexPath indexPathForRow:origRow inSection:ip.section]);
+            }
+        } @catch(id e){}
+    }
+    return %orig;
 }
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)ip {
-    %orig(tableView, PJRemap(self, ip));
-}
-%end
-%hook MainFrameLogicController
-- (void)onNewMsgArriving:(id)arg1 NotifyFlag:(id)arg2 {
+    if (MisakaGroupingEnabled()) {
+        @try {
+            NSArray *list = PJBuildDisplayList([self valueForKey:@"m_mainFrameLogicController"]);
+            if (list && ip.row < (NSInteger)list.count) {
+                id item = list[ip.row];
+                if ([item isEqual:kPJFolderMark]) {
+                    [tableView deselectRowAtIndexPath:ip animated:YES];
+                    NSArray *front = [[self valueForKey:@"m_mainFrameLogicController"] valueForKey:@"m_frontSessionArray"];
+                    NSMutableArray *names = [NSMutableArray new];
+                    for (id cell in front) {
+                        NSString *un = [cell valueForKey:@"_userName"];
+                        if ([un hasSuffix:@"@chatroom"]) {
+                            NSString *nm = [cell valueForKey:@"_textForNameLabel"] ?: un;
+                            [names addObject:nm];
+                        }
+                    }
+                    PJGroupFolderVC *g = [PJGroupFolderVC new];
+                    g.groupUsernames = names;
+                    [self.navigationController pushViewController:g animated:YES];
+                    return;
+                }
+                NSUInteger origRow = [item unsignedIntegerValue];
+                %orig(tableView, [NSIndexPath indexPathForRow:origRow inSection:ip.section]);
+                return;
+            }
+        } @catch(id e){}
+    }
     %orig;
-    if (!MisakaGroupingEnabled()) return;
-    @try {
-        UIViewController *vc = [self valueForKey:@"m_delegate"];
-        UITableView *tv = [vc valueForKey:@"m_tableView"];
-        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.3 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-            @try { if ([tv isKindOfClass:[UITableView class]]) [tv reloadData]; } @catch(id e){}
-        });
-    } @catch(id e){}
 }
 %end
-
 
 #pragma mark - 简单设置页(对应 PJSettingViewController)
 @interface PJSettingsViewController : UIViewController <UITableViewDataSource, UITableViewDelegate>
