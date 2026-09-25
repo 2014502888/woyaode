@@ -12,6 +12,8 @@
 @end
 @interface MoreViewController : UIViewController
 @end
+@interface NewSettingViewController : UIViewController
+@end
 
 // ============================================================
 //  Misaka + Joker 反推实现 (来自 2.dylib 逆向)
@@ -213,31 +215,47 @@ static void JokerPresentEditorForMessage(id msg, UIViewController *host) {
 }
 @end
 
-#pragma mark - 设置入口: 加到微信"我"页面(MoreViewController)底部
-// 原 dylib 同样在"我"页用 MMTableViewInfo 加一个 section 入口, 点进 PJSettingViewController。
+#pragma mark - 设置入口: 我页/设置页底部加按钮
+static UITableView *PJFindTableView(UIView *view) {
+    if ([view isKindOfClass:[UITableView class]]) return (UITableView *)view;
+    for (UIView *sub in view.subviews) {
+        UITableView *t = PJFindTableView(sub);
+        if (t) return t;
+    }
+    return nil;
+}
+static void PJAddSettingsEntry(UIViewController *vc) {
+    UITableView *tv = PJFindTableView(vc.view);
+    if (!tv) return;
+    if ([tv.tableFooterView.accessibilityLabel isEqual:@"pj_entry"]) return;
+    UIButton *btn = [UIButton buttonWithType:UIButtonTypeSystem];
+    btn.frame = CGRectMake(0, 0, tv.bounds.size.width, 54);
+    btn.backgroundColor = [UIColor whiteColor];
+    btn.accessibilityLabel = @"pj_entry";
+    [btn setTitle:@"增强设置(Misaka/Joker)" forState:UIControlStateNormal];
+    btn.titleLabel.font = [UIFont systemFontOfSize:16];
+    [btn addTarget:vc action:@selector(pjOpenSettings) forControlEvents:UIControlEventTouchUpInside];
+    tv.tableFooterView = btn;
+}
+static void PJOpenSettingsPush(UIViewController *vc) {
+    PJSettingsViewController *s = [PJSettingsViewController new];
+    [vc.navigationController pushViewController:s animated:YES];
+}
+
 %hook MoreViewController
 - (void)viewDidAppear:(BOOL)animated {
     %orig;
-    static dispatch_once_t once;
-    dispatch_once(&once, ^{
-        UITableView *tv = nil;
-        for (UIView *v in self.view.subviews) {
-            if ([v isKindOfClass:[UITableView class]]) { tv = (UITableView *)v; break; }
-        }
-        if (!tv) return;
-        UIButton *btn = [UIButton buttonWithType:UIButtonTypeSystem];
-        btn.frame = CGRectMake(20, 0, tv.bounds.size.width - 40, 46);
-        btn.backgroundColor = [UIColor whiteColor];
-        [btn setTitle:@"增强设置(Misaka/Joker)" forState:UIControlStateNormal];
-        btn.layer.cornerRadius = 10;
-        [btn addTarget:self action:@selector(pjOpenSettings) forControlEvents:UIControlEventTouchUpInside];
-        tv.tableFooterView = btn;
-    });
+    PJAddSettingsEntry(self);
 }
-- (void)pjOpenSettings {
-    PJSettingsViewController *vc = [PJSettingsViewController new];
-    [self.navigationController pushViewController:vc animated:YES];
+- (void)pjOpenSettings { PJOpenSettingsPush(self); }
+%end
+
+%hook NewSettingViewController
+- (void)viewDidAppear:(BOOL)animated {
+    %orig;
+    PJAddSettingsEntry(self);
 }
+- (void)pjOpenSettings { PJOpenSettingsPush(self); }
 %end
 
 %ctor {
