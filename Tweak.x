@@ -308,9 +308,10 @@ static NSArray *PJBuildDisplayList(id logic) {
 - (void)viewDidAppear:(BOOL)animated {
     %orig;
     @try {
-        id ti = [self valueForKey:@"m_tableViewInfo"];
-        NSString *s = [NSString stringWithFormat:@"m_tableViewInfo class = %@", [ti class]];
-        [s writeToFile:[NSTemporaryDirectory() stringByAppendingPathComponent:@"pj_ti.txt"] atomically:YES encoding:NSUTF8StringEncoding error:nil];
+        id logic = [self valueForKey:@"m_mainFrameLogicController"];
+        id ti = [logic valueForKey:@"m_tableViewInfo"];
+        if (!ti) ti = [self valueForKey:@"m_tableViewInfo"];
+        NSString *s = [NSString stringWithFormat:@"logic=%@ ti=%@", [logic class], [ti class]];
     } @catch(id e){}
 }
 %end
