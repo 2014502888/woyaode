@@ -2,6 +2,15 @@
 #import <Foundation/Foundation.h>
 #import <objc/runtime.h>
 
+// 微信 8.0.78 目标类前向声明(实际实现在微信包内, 这里仅为编译通过)
+@interface CMessageWrap : NSObject
+- (NSString *)displayContent;
+@end
+@interface BaseMsgContentViewController : UIViewController
+@end
+@interface MainFrameViewController : UIViewController
+@end
+
 // ============================================================
 //  Misaka + Joker 反推实现 (来自 2.dylib 逆向)
 //  Misaka  = 首页会话列表分组 (单聊 / 群聊 / 其他)
