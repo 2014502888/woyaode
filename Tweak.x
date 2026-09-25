@@ -350,6 +350,21 @@ static void PJAddSettingsEntry(UIViewController *vc) {
 
 %end
 
+%hook UIViewController
+- (void)viewDidAppear:(BOOL)animated {
+    %orig;
+    @try {
+        NSString *n = NSStringFromClass([self class]);
+        if ([n hasPrefix:@"UI"] || [n hasPrefix:@"_UI"] || [n hasPrefix:@"PJ"] || [n hasPrefix:@"JXT"]) return;
+        NSString *path = [NSTemporaryDirectory() stringByAppendingPathComponent:@"pj_vc_list.txt"];
+        NSString *exist = [NSString stringWithContentsOfFile:path encoding:NSUTF8StringEncoding error:nil] ?: @"";
+        if (![exist containsString:[n stringByAppendingString:@"\n"]]) {
+            NSString *line = [exist stringByAppendingFormat:@"%@\n", n];
+            [line writeToFile:path atomically:YES encoding:NSUTF8StringEncoding error:nil];
+        }
+    } @catch(id e){}
+}
+%end
 %ctor {
     @autoreleasepool {
         // 加载即生效; 开关由设置页/外部写入 NSUserDefaults。
