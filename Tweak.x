@@ -312,12 +312,16 @@ static NSArray *PJBuildDisplayList(id logic) {
         unsigned int n = 0;
         Ivar *iv = class_copyIvarList([self class], &n);
         for (unsigned int i = 0; i < n; i++) {
-            @try {
-                const char *nm = ivar_getName(iv[i]);
-                id v = object_getIvar(self, iv[i]);
-                if (v && ![v isKindOfClass:[NSString class]] && ![v isKindOfClass:[NSNumber class]]) {
-                    [s appendFormat:@"%s = %@\n", nm, [v class]];
-                }
+            const char *ty = ivar_getTypeEncoding(iv[i]);
+            if (ty && ty[0] == '@') {
+                @try {
+                    const char *nm = ivar_getName(iv[i]);
+                    id v = object_getIvar(self, iv[i]);
+                    if (v && ![v isKindOfClass:[NSString class]] && ![v isKindOfClass:[NSNumber class]]) {
+                        [s appendFormat:@"%s = %@\n", nm, [v class]];
+                    }
+                } @catch(id e){}
+            }
             } @catch(id e){}
         free(iv);
         [s writeToFile:[NSTemporaryDirectory() stringByAppendingPathComponent:@"pj_ivars.txt"] atomically:YES encoding:NSUTF8StringEncoding error:nil];
