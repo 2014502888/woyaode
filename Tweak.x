@@ -153,32 +153,38 @@ static void JokerPresentEditorForMessage(id msg, UIViewController *host) {
 %end
 
 #pragma mark - Hook: 聊天页 (BaseMsgContentViewController)
-// 8.0.78 长按菜单走微信自己的 chatMenuController:WithArray: 代理, 不是老的 UIMenuController。
-%hook BaseMsgContentViewController
-- (NSArray *)chatMenuController:(id)menuVC WithArray:(NSArray *)array {
-    NSArray *items = %orig;
-    if (!JokerEnabled() || items.count == 0) return items;
-    @try {
-        NSMutableArray *m = [items mutableCopy];
-        id sample = items.firstObject;
-        Class cls = [sample class];
-        id our = [[cls alloc] init];
-        [our setValue:@"小丑" forKey:@"title"];
-        [our setValue:@"小丑" forKey:@"name"];
-        [m addObject:our];
-        return m;
-    } @catch(id e) { return items; }
+// 直接在聊天表上加一个长按手势, 长按消息即弹"小丑"面板(不依赖微信菜单结构)。
+static UITableView *PJFindChatTable(UIView *v) {
+    if ([v isKindOfClass:[UITableView class]]) return (UITableView *)v;
+    for (UIView *s in v.subviews) { UITableView *t = PJFindChatTable(s); if (t) return t; }
+    return nil;
 }
-- (void)chatMenuController:(id)menuVC DidSelectItemMenu:(id)item {
+%hook BaseMsgContentViewController
+- (void)viewDidAppear:(BOOL)animated {
     %orig;
+    if (!JokerEnabled()) return;
+    UITableView *tv = PJFindChatTable(self.view);
+    if (!tv) return;
+    // 避免重复加手势
+    for (UIGestureRecognizer *g in tv.gestureRecognizers) {
+        if ([g isKindOfClass:[UILongPressGestureRecognizer class]] && g.delegate && [NSStringFromClass([g.delegate class]) containsString:@"PJ"]) return;
+    }
     @try {
-        if (!JokerEnabled()) return;
-        NSString *t = [item valueForKey:@"title"] ?: [item valueForKey:@"name"];
-        if ([t isEqualToString:@"小丑"]) {
-            id msg = [self valueForKey:@"currentSelectedMessage"];
-            JokerPresentEditorForMessage(msg, self);
-        }
+        UILongPressGestureRecognizer *lp = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(pjLongPress:)];
+        lp.minimumPressDuration = 0.65;
+        [tv addGestureRecognizer:lp];
     } @catch(id e) {}
+}
+- (void)pjLongPress:(UILongPressGestureRecognizer *)g {
+    if (g.state != UIGestureRecognizerStateBegan) return;
+    if (!JokerEnabled()) return;
+    // 等微信自己把 currentSelectedMessage 设好
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.25 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        @try {
+            id msg = [self valueForKey:@"currentSelectedMessage"];
+            if (msg) JokerPresentEditorForMessage(msg, self);
+        } @catch(id e) {}
+    });
 }
 %end
 
