@@ -249,31 +249,6 @@ static NSArray *PJSortCells(NSArray *arr) {
     [r addObjectsFromArray:other];
     return r;
 }
-%hook MainFrameLogicController
-- (NSInteger)getFakeCellCount {
-    NSInteger c = %orig;
-    if (!MisakaGroupingEnabled()) return c;
-    @try {
-        NSArray *front = [self valueForKey:@"m_frontSessionArray"];
-        if (front.count >= 2) {
-            NSArray *sorted = PJSortCells(front);
-            objc_setAssociatedObject(self, kPJSortedKey, sorted, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-        }
-    } @catch(id e){}
-    return c;
-}
-- (id)getCellDataAtIndexPath:(NSIndexPath *)ip {
-    id cell = %orig;
-    if (!MisakaGroupingEnabled()) return cell;
-    @try {
-        NSArray *sorted = objc_getAssociatedObject(self, kPJSortedKey);
-        if (sorted.count > 0 && ip.row < (NSInteger)sorted.count) {
-            return sorted[ip.row];
-        }
-    } @catch(id e){}
-    return cell;
-}
-%end
 #pragma mark - 简单设置页(对应 PJSettingViewController)
 @interface PJSettingsViewController : UIViewController <UITableViewDataSource, UITableViewDelegate>
 @end
