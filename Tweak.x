@@ -213,6 +213,7 @@ static void JokerPresentEditorForMessage(id msg, UIViewController *host) {
     if (sw.tag == 100) [[NSUserDefaults standardUserDefaults] setBool:sw.on forKey:@"misaka_grouping_enable"];
     if (sw.tag == 101) [[NSUserDefaults standardUserDefaults] setBool:sw.on forKey:@"pjMessageJokerEnable"];
 }
+- (void)pjDismiss { [self dismissViewControllerAnimated:YES completion:nil]; }
 @end
 
 #pragma mark - 设置入口: 我页/设置页底部加按钮
@@ -237,9 +238,17 @@ static void PJAddSettingsEntry(UIViewController *vc) {
     [btn addTarget:vc action:@selector(pjOpenSettings) forControlEvents:UIControlEventTouchUpInside];
     tv.tableFooterView = btn;
 }
+static UIViewController *PJTopmostVC(void) {
+    UIViewController *top = [UIApplication sharedApplication].keyWindow.rootViewController;
+    while (top.presentedViewController) top = top.presentedViewController;
+    return top;
+}
 static void PJOpenSettingsPush(UIViewController *vc) {
     PJSettingsViewController *s = [PJSettingsViewController new];
-    [vc.navigationController pushViewController:s animated:YES];
+    s.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemDone target:s action:@selector(pjDismiss)];
+    UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:s];
+    UIViewController *top = PJTopmostVC() ?: vc;
+    [top presentViewController:nav animated:YES completion:nil];
 }
 
 %hook MoreViewController
