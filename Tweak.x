@@ -308,16 +308,18 @@ static NSArray *PJBuildDisplayList(id logic) {
 - (void)viewDidAppear:(BOOL)animated {
     %orig;
     @try {
-        id ti = [self valueForKey:@"m_tableViewInfo"];
         NSMutableString *s = [NSMutableString string];
-        [s appendFormat:@"tableInfo class=%@\n", [ti class]];
         unsigned int n = 0;
-        Method *ms = class_copyMethodList([ti class], &n);
+        Ivar *iv = class_copyIvarList([self class], &n);
         for (unsigned int i = 0; i < n; i++) {
-            [s appendFormat:@"%@\n", NSStringFromSelector(method_getName(ms[i]))];
+            const char *nm = ivar_getName(iv[i]);
+            id v = object_getIvar(self, iv[i]);
+            if (v && ![v isKindOfClass:[NSString class]] && ![v isKindOfClass:[NSNumber class]]) {
+                [s appendFormat:@"%s = %@\n", nm, [v class]];
+            }
         }
-        free(ms);
-        [s writeToFile:[NSTemporaryDirectory() stringByAppendingPathComponent:@"pj_tableinfo.txt"] atomically:YES encoding:NSUTF8StringEncoding error:nil];
+        free(iv);
+        [s writeToFile:[NSTemporaryDirectory() stringByAppendingPathComponent:@"pj_ivars.txt"] atomically:YES encoding:NSUTF8StringEncoding error:nil];
     } @catch(id e){}
 }
 %end
