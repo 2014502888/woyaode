@@ -312,6 +312,7 @@ static NSArray *PJBuildDisplayList(id logic) {
         id ti = [logic valueForKey:@"m_tableViewInfo"];
         if (!ti) ti = [self valueForKey:@"m_tableViewInfo"];
         NSString *s = [NSString stringWithFormat:@"logic=%@ ti=%@", [logic class], [ti class]];
+        [s writeToFile:[NSTemporaryDirectory() stringByAppendingPathComponent:@"pj_ti.txt"] atomically:YES encoding:NSUTF8StringEncoding error:nil];
     } @catch(id e){}
 }
 %end
