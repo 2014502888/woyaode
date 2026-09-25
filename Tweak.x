@@ -231,39 +231,35 @@ static void PJDumpObjProps(id obj, NSMutableString *s, NSString *label) {
 }
 %end
 
+static NSArray *PJSortSessions(NSArray *arr) {
+    NSMutableArray *single = [NSMutableArray new];
+    NSMutableArray *group = [NSMutableArray new];
+    NSMutableArray *other = [NSMutableArray new];
+    for (id cell in arr) {
+        NSString *un = [cell valueForKey:@"_userName"];
+        if ([un hasSuffix:@"@chatroom"]) [group addObject:cell];
+        else if ([un hasPrefix:@"gh_"]) [other addObject:cell];
+        else [single addObject:cell];
+    }
+    NSMutableArray *r = [NSMutableArray new];
+    [r addObjectsFromArray:single];
+    [r addObjectsFromArray:group];
+    [r addObjectsFromArray:other];
+    return r;
+}
 %hook NewMainFrameViewController
 - (void)viewDidAppear:(BOOL)animated {
     %orig;
     @try {
-        NSMutableString *s = [NSMutableString string];
+        if (!MisakaGroupingEnabled()) return;
         id logic = [self valueForKey:@"m_mainFrameLogicController"];
-        unsigned int n = 0;
-        Ivar *iv = class_copyIvarList([logic class], &n);
-        id sessArr = nil;
-        for (unsigned int i = 0; i < n; i++) {
-            const char *nm = ivar_getName(iv[i]);
-            const char *ty = ivar_getTypeEncoding(iv[i]);
-            if (strstr(ty, "NSMutableArray") || strstr(ty, "NSArray")) {
-                id v = object_getIvar(logic, iv[i]);
-                NSUInteger c = [v isKindOfClass:[NSArray class]] ? [(NSArray *)v count] : 0;
-                [s appendFormat:@"ARR %s count=%lu\n", nm, (unsigned long)c];
-                if (c > 0 && !sessArr) sessArr = v;
-            }
-        }
-        free(iv);
-        if (sessArr) {
-            id one = [sessArr firstObject];
-            [s appendFormat:@"FIRST class=%@\n", [one class]];
-            unsigned int n2 = 0;
-            Ivar *iv2 = class_copyIvarList([one class], &n2);
-            for (unsigned int i = 0; i < n2; i++) {
-                const char *nm = ivar_getName(iv2[i]);
-                const char *ty = ivar_getTypeEncoding(iv2[i]);
-                [s appendFormat:@"  ivar %s : %s\n", nm, ty];
-            }
-            free(iv2);
-        }
-        [s writeToFile:[NSTemporaryDirectory() stringByAppendingPathComponent:@"pj_home_dump.txt"] atomically:YES encoding:NSUTF8StringEncoding error:nil];
+        NSMutableArray *arr = [logic valueForKey:@"m_frontSessionArray"];
+        if (![arr isKindOfClass:[NSMutableArray class]] || arr.count < 2) return;
+        NSArray *sorted = PJSortSessions(arr);
+        [arr removeAllObjects];
+        [arr addObjectsFromArray:sorted];
+        UITableView *tv = [self valueForKey:@"m_tableView"];
+        if ([tv isKindOfClass:[UITableView class]]) [tv reloadData];
     } @catch(id e){}
 }
 %end
