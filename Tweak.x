@@ -154,15 +154,33 @@ static void JokerPresentEditorForMessage(id msg, UIViewController *host) {
 
 #pragma mark - Hook: 聊天页 (BaseMsgContentViewController)
 // 长按菜单: 拿微信菜单数组, 复制一个已有菜单项改成"小丑"追加(不改微信原有项)。
+static id PJDuplicateItem(id sample) {
+    @try {
+        Class cls = [sample class];
+        id inst = [[cls alloc] init];
+        unsigned int n = 0;
+        Ivar *ivars = class_copyIvarList(cls, &n);
+        for (unsigned int i = 0; i < n; i++) {
+            Ivar iv = ivars[i];
+            const char *name = ivar_getName(iv);
+            const char *type = ivar_getTypeEncoding(iv);
+            NSString *key = [NSString stringWithUTF8String:name];
+            @try {
+                id val = [sample valueForKey:key];
+                if (val) [inst setValue:val forKey:key];
+            } @catch(id e) {}
+        }
+        free(ivars);
+        return inst;
+    } @catch(id e) { return nil; }
+}
 %hook BaseMsgContentViewController
 - (NSArray *)chatMenuController:(id)menuVC WithArray:(NSArray *)array {
     NSArray *items = %orig;
     if (!JokerEnabled() || items.count == 0) return items;
     @try {
         NSMutableArray *m = [items mutableCopy];
-        id sample = items.firstObject;
-        id copy = [[NSKeyedUnarchiver alloc] initForReadingWithData:
-                   [NSKeyedArchiver archivedDataWithRootObject:sample]];
+        id copy = PJDuplicateItem(items.firstObject);
         if (copy) {
             [copy setValue:@"小丑" forKey:@"title"];
             [m addObject:copy];
