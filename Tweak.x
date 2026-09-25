@@ -153,41 +153,39 @@ static void JokerPresentEditorForMessage(id msg, UIViewController *host) {
 %end
 
 #pragma mark - Hook: 聊天页 (BaseMsgContentViewController)
-// 直接在聊天表上加一个长按手势, 长按消息即弹"小丑"面板(不依赖微信菜单结构)。
-static UITableView *PJFindChatTable(UIView *v) {
-    if ([v isKindOfClass:[UITableView class]]) return (UITableView *)v;
-    for (UIView *s in v.subviews) { UITableView *t = PJFindChatTable(s); if (t) return t; }
-    return nil;
-}
+// 8.0.78 长按走 contextMenu: 拿到微信菜单后塞一个"小丑"动作。
 %hook BaseMsgContentViewController
-- (void)viewDidAppear:(BOOL)animated {
-    %orig;
-    if (!JokerEnabled()) return;
-    UITableView *tv = PJFindChatTable(self.view);
-    if (!tv) return;
-    // 避免重复加手势
-    for (UIGestureRecognizer *g in tv.gestureRecognizers) {
-        if ([g isKindOfClass:[UILongPressGestureRecognizer class]] && g.delegate && [NSStringFromClass([g.delegate class]) containsString:@"PJ"]) return;
-    }
+- (UIContextMenuConfiguration *)tableView:(UITableView *)tableView contextMenuConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath point:(CGPoint)point {
+    UIContextMenuConfiguration *orig = %orig;
+    if (!JokerEnabled() || !orig) return orig;
     @try {
-        UILongPressGestureRecognizer *lp = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(pjLongPress:)];
-        lp.minimumPressDuration = 0.65;
-        [tv addGestureRecognizer:lp];
-    } @catch(id e) {}
-}
-- (void)pjLongPress:(UILongPressGestureRecognizer *)g {
-    if (g.state != UIGestureRecognizerStateBegan) return;
-    if (!JokerEnabled()) return;
-    // 等微信自己把 currentSelectedMessage 设好
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.25 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-        @try {
-            id msg = [self valueForKey:@"currentSelectedMessage"];
-            if (msg) JokerPresentEditorForMessage(msg, self);
-        } @catch(id e) {}
-    });
+        id provider = [orig valueForKey:@"actionProvider"] ?: [orig valueForKey:@"menuProvider"];
+        id previewProv = [orig valueForKey:@"previewProvider"];
+        UIContextMenuConfiguration *wrapped = [UIContextMenuConfiguration
+            configurationWithIdentifier:orig.identifier
+            previewProvider:^UIViewController*{
+                @try { if (previewProv) return ((UIViewController*(^)(void))previewProv)(); } @catch(id e){}
+                return nil;
+            }
+            actionProvider:^UIMenu*(NSArray *suggestions){
+                UIMenu *origMenu = nil;
+                @try { if (provider) origMenu = ((UIMenu*(^)(NSArray*))provider)(suggestions); } @catch(id e){}
+                NSMutableArray *children = [origMenu.children mutableCopy] ?: [NSMutableArray new];
+                UIAction *joker = [UIAction actionWithTitle:@"小丑" image:[UIImage systemImageNamed:@"face.smiling"] identifier:nil handler:^(UIAction *action){
+                    dispatch_async(dispatch_get_main_queue(), ^{
+                        @try {
+                            id msg = [self valueForKey:@"currentSelectedMessage"];
+                            JokerPresentEditorForMessage(msg, self);
+                        } @catch(id e){}
+                    });
+                }];
+                [children addObject:joker];
+                return [UIMenu menuWithTitle:@"" children:children];
+            }];
+        return wrapped;
+    } @catch(id e) { return orig; }
 }
 %end
-
 #pragma mark - Hook: 首页会话列表 (MainFrameViewController)
 // 原 dylib: misakaChatArray / misakaGroupArray / misakaOtherArray 分桶,
 // 这里在列表刷新后重建分桶, 并按开关决定是否插入分组头。
