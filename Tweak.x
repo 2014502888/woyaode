@@ -153,37 +153,33 @@ static void JokerPresentEditorForMessage(id msg, UIViewController *host) {
 %end
 
 #pragma mark - Hook: 聊天页 (BaseMsgContentViewController)
-// 先做能看见的: 进聊天页挂长按手势, 长按即弹小丑面板(不依赖微信菜单)。
-static UIScrollView *PJFindAnyScroll(UIView *v) {
-    if ([v isKindOfClass:[UIScrollView class]]) return (UIScrollView *)v;
-    for (UIView *s in v.subviews) { UIScrollView *r = PJFindAnyScroll(s); if (r) return r; }
-    return nil;
-}
+// 长按菜单: 拿微信菜单数组, 复制一个已有菜单项改成"小丑"追加(不改微信原有项)。
 %hook BaseMsgContentViewController
-- (void)viewDidAppear:(BOOL)animated {
-    %orig;
-    if (!JokerEnabled()) return;
-    UIScrollView *sv = PJFindAnyScroll(self.view);
-    if (!sv) return;
-    for (UIGestureRecognizer *g in sv.gestureRecognizers) {
-        if ([g isKindOfClass:[UILongPressGestureRecognizer class]] && ((UILongPressGestureRecognizer *)g).minimumPressDuration == 0.7) return;
-    }
-    UILongPressGestureRecognizer *lp = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(pjJokerLong:)];
-    lp.minimumPressDuration = 0.7;
-    [sv addGestureRecognizer:lp];
+- (NSArray *)chatMenuController:(id)menuVC WithArray:(NSArray *)array {
+    NSArray *items = %orig;
+    if (!JokerEnabled() || items.count == 0) return items;
+    @try {
+        NSMutableArray *m = [items mutableCopy];
+        id sample = items.firstObject;
+        id copy = [[NSKeyedUnarchiver alloc] initForReadingWithData:
+                   [NSKeyedArchiver archivedDataWithRootObject:sample]];
+        if (copy) {
+            [copy setValue:@"小丑" forKey:@"title"];
+            [m addObject:copy];
+        }
+        return m;
+    } @catch(id e) { return items; }
 }
-- (void)pjJokerLong:(UILongPressGestureRecognizer *)g {
-    if (g.state != UIGestureRecognizerStateBegan) return;
-    if (!JokerEnabled()) return;
-    dispatch_async(dispatch_get_main_queue(), ^{
-        @try {
-            UIViewController *host = [UIApplication sharedApplication].keyWindow.rootViewController;
-            while (host.presentedViewController) host = host.presentedViewController;
-            UIAlertController *a = [UIAlertController alertControllerWithTitle:@"小丑" message:@"Joker已触发" preferredStyle:UIAlertControllerStyleAlert];
-            [a addAction:[UIAlertAction actionWithTitle:@"好" style:UIAlertActionStyleDefault handler:nil]];
-            [host presentViewController:a animated:YES completion:nil];
-        } @catch(id e){}
-    });
+- (void)chatMenuController:(id)menuVC DidSelectItemMenu:(id)item {
+    %orig;
+    @try {
+        if (!JokerEnabled()) return;
+        NSString *t = [item valueForKey:@"title"];
+        if ([t isEqualToString:@"小丑"]) {
+            id msg = [self valueForKey:@"currentSelectedMessage"];
+            JokerPresentEditorForMessage(msg, self);
+        }
+    } @catch(id e){}
 }
 %end
 #pragma mark - Hook: 首页会话列表 (MainFrameViewController)
