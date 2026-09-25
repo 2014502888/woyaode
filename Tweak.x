@@ -16,6 +16,8 @@
 @end
 @interface NewSettingViewController : UIViewController
 @end
+@interface MainFrameLogicController : NSObject
+@end
 
 // ============================================================
 //  Misaka + Joker 反推实现 (来自 2.dylib 逆向)
