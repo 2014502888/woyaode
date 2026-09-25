@@ -236,20 +236,38 @@ static void PJDumpObjProps(id obj, NSMutableString *s, NSString *label) {
     %orig;
     @try {
         NSMutableString *s = [NSMutableString string];
+        id logic = [self valueForKey:@"m_mainFrameLogicController"];
+        [s appendFormat:@"LOGIC class=%@\n", [logic class]];
         unsigned int n = 0;
-        Ivar *iv = class_copyIvarList([self class], &n);
+        Ivar *iv = class_copyIvarList([logic class], &n);
+        NSArray *sessArr = nil;
         for (unsigned int i = 0; i < n; i++) {
             const char *nm = ivar_getName(iv[i]);
             const char *ty = ivar_getTypeEncoding(iv[i]);
-            [s appendFormat:@"ivar %s : %s\n", nm, ty];
+            [s appendFormat:@"  ivar %s : %s\n", nm, ty];
+            if (strstr(ty, "NSArray")) {
+                @try {
+                    id v = [logic valueForKey:[NSString stringWithUTF8String:nm]];
+                    if ([v isKindOfClass:[NSArray class]] && [(NSArray *)v count] > 0) {
+                        [s appendFormat:@"    >> array count=%lu first=%@\n", (unsigned long)[(NSArray *)v count], [[(NSArray *)v firstObject] class]];
+                        if (!sessArr) sessArr = v;
+                    }
+                } @catch(id e){}
+            }
         }
         free(iv);
-        unsigned int np = 0;
-        objc_property_t *pp = class_copyPropertyList([self class], &np);
-        for (unsigned int i = 0; i < np; i++) {
-            [s appendFormat:@"prop %s\n", property_getName(pp[i])];
+        if (sessArr) {
+            id one = [sessArr firstObject];
+            [s appendFormat:@"\n=== MMSessionInfo ivars ===\n"];
+            unsigned int n2 = 0;
+            Ivar *iv2 = class_copyIvarList([one class], &n2);
+            for (unsigned int i = 0; i < n2; i++) {
+                const char *nm = ivar_getName(iv2[i]);
+                const char *ty = ivar_getTypeEncoding(iv2[i]);
+                [s appendFormat:@"  ivar %s : %s\n", nm, ty];
+            }
+            free(iv2);
         }
-        free(pp);
         [s writeToFile:[NSTemporaryDirectory() stringByAppendingPathComponent:@"pj_home_dump.txt"] atomically:YES encoding:NSUTF8StringEncoding error:nil];
     } @catch(id e){}
 }
