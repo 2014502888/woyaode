@@ -246,21 +246,46 @@ static NSArray *PJSortCells(NSArray *arr) {
     [r addObjectsFromArray:other];
     return r;
 }
-%hook NewMainFrameViewController
-- (void)viewDidAppear:(BOOL)animated {
-    %orig;
+static const char *kPJSortedKey = "pj_sorted_cells";
+static NSArray *PJSortCells(NSArray *arr) {
+    NSMutableArray *single = [NSMutableArray new];
+    NSMutableArray *group = [NSMutableArray new];
+    NSMutableArray *other = [NSMutableArray new];
+    for (id cell in arr) {
+        NSString *un = [cell valueForKey:@"_userName"];
+        if ([un hasSuffix:@"@chatroom"]) [group addObject:cell];
+        else if ([un hasPrefix:@"gh_"]) [other addObject:cell];
+        else [single addObject:cell];
+    }
+    NSMutableArray *r = [NSMutableArray new];
+    [r addObjectsFromArray:single];
+    [r addObjectsFromArray:group];
+    [r addObjectsFromArray:other];
+    return r;
+}
+%hook MainFrameLogicController
+- (NSInteger)getFakeCellCount {
+    NSInteger c = %orig;
+    if (!MisakaGroupingEnabled()) return c;
     @try {
-        NSMutableString *s = [NSMutableString string];
-        id logic = [self valueForKey:@"m_mainFrameLogicController"];
-        unsigned int n = 0;
-        Method *ms = class_copyMethodList([logic class], &n);
-        for (unsigned int i = 0; i < n; i++) {
-            SEL sel = method_getName(ms[i]);
-            [s appendFormat:@"method %@\n", NSStringFromSelector(sel)];
+        NSArray *front = [self valueForKey:@"m_frontSessionArray"];
+        if (front.count >= 2) {
+            NSArray *sorted = PJSortCells(front);
+            objc_setAssociatedObject(self, kPJSortedKey, sorted, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
         }
-        free(ms);
-        [s writeToFile:[NSTemporaryDirectory() stringByAppendingPathComponent:@"pj_home_dump.txt"] atomically:YES encoding:NSUTF8StringEncoding error:nil];
     } @catch(id e){}
+    return c;
+}
+- (id)getCellDataAtIndexPath:(NSIndexPath *)ip {
+    id cell = %orig;
+    if (!MisakaGroupingEnabled()) return cell;
+    @try {
+        NSArray *sorted = objc_getAssociatedObject(self, kPJSortedKey);
+        if (sorted.count > 0 && ip.row < (NSInteger)sorted.count) {
+            return sorted[ip.row];
+        }
+    } @catch(id e){}
+    return cell;
 }
 %end
 #pragma mark - 简单设置页(对应 PJSettingViewController)
