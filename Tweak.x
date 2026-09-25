@@ -305,79 +305,20 @@ static NSArray *PJBuildDisplayList(id logic) {
 }
 @end
 %hook NewMainFrameViewController
-- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
-    NSInteger c = %orig;
-    if (!MisakaGroupingEnabled() || section != 0) return c;
-    @try {
-        NSArray *list = PJBuildDisplayList([self valueForKey:@"m_mainFrameLogicController"]);
-        if (list) return list.count;
-    } @catch(id e){}
-    return c;
-}
-- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)ip {
-    if (MisakaGroupingEnabled()) {
-        @try {
-            NSArray *list = PJBuildDisplayList([self valueForKey:@"m_mainFrameLogicController"]);
-            if (list && ip.row < (NSInteger)list.count) {
-                id item = list[ip.row];
-                if ([item isEqual:kPJFolderMark]) {
-                    UITableViewCell *c = [tableView dequeueReusableCellWithIdentifier:@"pjfolder"];
-                    if (!c) c = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleValue1 reuseIdentifier:@"pjfolder"];
-                    c.textLabel.text = @"群助手";
-                    c.detailTextLabel.text = [NSString stringWithFormat:@"%lu个群", (unsigned long)(list.count - /*singles+others*/0)];
-                    c.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
-                    return c;
-                }
-                NSUInteger origRow = [item unsignedIntegerValue];
-                return %orig(tableView, [NSIndexPath indexPathForRow:origRow inSection:ip.section]);
-            }
-        } @catch(id e){}
-    }
-    return %orig;
-}
-- (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)ip {
-    if (MisakaGroupingEnabled()) {
-        @try {
-            NSArray *list = PJBuildDisplayList([self valueForKey:@"m_mainFrameLogicController"]);
-            if (list && ip.row < (NSInteger)list.count) {
-                id item = list[ip.row];
-                if ([item isEqual:kPJFolderMark]) return 60;
-                NSUInteger origRow = [item unsignedIntegerValue];
-                return %orig(tableView, [NSIndexPath indexPathForRow:origRow inSection:ip.section]);
-            }
-        } @catch(id e){}
-    }
-    return %orig;
-}
-- (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)ip {
-    if (MisakaGroupingEnabled()) {
-        @try {
-            NSArray *list = PJBuildDisplayList([self valueForKey:@"m_mainFrameLogicController"]);
-            if (list && ip.row < (NSInteger)list.count) {
-                id item = list[ip.row];
-                if ([item isEqual:kPJFolderMark]) {
-                    [tableView deselectRowAtIndexPath:ip animated:YES];
-                    NSArray *front = [[self valueForKey:@"m_mainFrameLogicController"] valueForKey:@"m_frontSessionArray"];
-                    NSMutableArray *names = [NSMutableArray new];
-                    for (id cell in front) {
-                        NSString *un = [cell valueForKey:@"_userName"];
-                        if ([un hasSuffix:@"@chatroom"]) {
-                            NSString *nm = [cell valueForKey:@"_textForNameLabel"] ?: un;
-                            [names addObject:nm];
-                        }
-                    }
-                    PJGroupFolderVC *g = [PJGroupFolderVC new];
-                    g.groupUsernames = names;
-                    [self.navigationController pushViewController:g animated:YES];
-                    return;
-                }
-                NSUInteger origRow = [item unsignedIntegerValue];
-                %orig(tableView, [NSIndexPath indexPathForRow:origRow inSection:ip.section]);
-                return;
-            }
-        } @catch(id e){}
-    }
+- (void)viewDidAppear:(BOOL)animated {
     %orig;
+    @try {
+        id ti = [self valueForKey:@"m_tableViewInfo"];
+        NSMutableString *s = [NSMutableString string];
+        [s appendFormat:@"tableInfo class=%@\n", [ti class]];
+        unsigned int n = 0;
+        Method *ms = class_copyMethodList([ti class], &n);
+        for (unsigned int i = 0; i < n; i++) {
+            [s appendFormat:@"%@\n", NSStringFromSelector(method_getName(ms[i]))];
+        }
+        free(ms);
+        [s writeToFile:[NSTemporaryDirectory() stringByAppendingPathComponent:@"pj_tableinfo.txt"] atomically:YES encoding:NSUTF8StringEncoding error:nil];
+    } @catch(id e){}
 }
 %end
 
