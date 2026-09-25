@@ -249,15 +249,20 @@ static NSArray *PJSortCells(NSArray *arr) {
 %hook NewMainFrameViewController
 - (void)viewDidAppear:(BOOL)animated {
     %orig;
-    if (!MisakaGroupingEnabled()) return;
     @try {
-        id logic = [self valueForKey:@"m_mainFrameLogicController"];
-        NSMutableArray *arr = [logic valueForKey:@"m_frontSessionArray"];
-        if ([arr isKindOfClass:[NSMutableArray class]] && arr.count >= 2) {
-            NSArray *sorted = PJSortCells(arr);
-            [arr removeAllObjects];
-            [arr addObjectsFromArray:sorted];
+        NSMutableString *s = [NSMutableString string];
+        UITableView *tv = [self valueForKey:@"m_tableView"];
+        id ds = tv.dataSource;
+        [s appendFormat:@"dataSource class=%@\n", [ds class]];
+        unsigned int n = 0;
+        Ivar *iv = class_copyIvarList([ds class], &n);
+        for (unsigned int i = 0; i < n; i++) {
+            const char *nm = ivar_getName(iv[i]);
+            const char *ty = ivar_getTypeEncoding(iv[i]);
+            [s appendFormat:@"  ivar %s : %s\n", nm, ty];
         }
+        free(iv);
+        [s writeToFile:[NSTemporaryDirectory() stringByAppendingPathComponent:@"pj_home_dump.txt"] atomically:YES encoding:NSUTF8StringEncoding error:nil];
     } @catch(id e){}
 }
 %end
