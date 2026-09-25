@@ -175,13 +175,19 @@ static UIScrollView *PJFindAnyScroll(UIView *v) {
 - (void)pjJokerLong:(UILongPressGestureRecognizer *)g {
     if (g.state != UIGestureRecognizerStateBegan) return;
     if (!JokerEnabled()) return;
-    id msg = nil;
     @try {
-        msg = [self valueForKey:@"currentSelectedMessage"]
-           ?: [self valueForKey:@"message"]
-           ?: [self valueForKey:@"curMessageWrap"];
+        id msg = nil;
+        @try {
+            msg = [self valueForKey:@"currentSelectedMessage"];
+        } @catch(id e){}
+        dispatch_async(dispatch_get_main_queue(), ^{
+            @try {
+                UIViewController *host = [UIApplication sharedApplication].keyWindow.rootViewController;
+                while (host.presentedViewController) host = host.presentedViewController;
+                JokerPresentEditorForMessage(msg, host);
+            } @catch(id e){}
+        });
     } @catch(id e){}
-    JokerPresentEditorForMessage(msg, self);
 }
 %end
 #pragma mark - Hook: 首页会话列表 (MainFrameViewController)
