@@ -231,24 +231,55 @@ static void PJDumpObjProps(id obj, NSMutableString *s, NSString *label) {
         [s writeToFile:[PJDoc() stringByAppendingPathComponent:@"pj_home_dump.txt"] atomically:YES encoding:NSUTF8StringEncoding error:nil];
     } @catch(id e){}
 }
-%end
-static const char *kPJSortedKey = "pj_sorted_cells";
-static NSArray *PJSortCells(NSArray *arr) {
-    NSMutableArray *single = [NSMutableArray new];
-    NSMutableArray *group = [NSMutableArray new];
-    NSMutableArray *other = [NSMutableArray new];
-    for (id cell in arr) {
-        NSString *un = [cell valueForKey:@"_userName"];
-        if ([un hasSuffix:@"@chatroom"]) [group addObject:cell];
-        else if ([un hasPrefix:@"gh_"]) [other addObject:cell];
-        else [single addObject:cell];
-    }
-    NSMutableArray *r = [NSMutableArray new];
-    [r addObjectsFromArray:single];
-    [r addObjectsFromArray:group];
-    [r addObjectsFromArray:other];
-    return r;
+static const char *kPJRowMap = "pj_row_map";
+static NSArray *PJBuildRowMap(id logic) {
+    @try {
+        NSArray *front = [logic valueForKey:@"m_frontSessionArray"];
+        if (![front isKindOfClass:[NSArray class]] || front.count < 2) return nil;
+        NSMutableIndexSet *single = [NSMutableIndexSet new];
+        NSMutableIndexSet *group = [NSMutableIndexSet new];
+        NSMutableIndexSet *other = [NSMutableIndexSet new];
+        for (NSUInteger i = 0; i < front.count; i++) {
+            NSString *un = [front[i] valueForKey:@"_userName"];
+            if ([un hasSuffix:@"@chatroom"]) [group addIndex:i];
+            else if ([un hasPrefix:@"gh_"]) [other addIndex:i];
+            else [single addIndex:i];
+        }
+        NSMutableArray *map = [NSMutableArray new];
+        [single enumerateIndexesUsingBlock:^(NSUInteger i, BOOL *_) { [map addObject:@(i)]; }];
+        [group enumerateIndexesUsingBlock:^(NSUInteger i, BOOL *_) { [map addObject:@(i)]; }];
+        [other enumerateIndexesUsingBlock:^(NSUInteger i, BOOL *_) { [map addObject:@(i)]; }];
+        return map;
+    } @catch(id e) { return nil; }
 }
+static NSIndexPath *PJRemap(id self, NSIndexPath *ip) {
+    NSArray *map = objc_getAssociatedObject(self, kPJRowMap);
+    if (!MisakaGroupingEnabled() || !map || ip.row >= (NSInteger)map.count) return ip;
+    NSUInteger origRow = [map[ip.row] unsignedIntegerValue];
+    return [NSIndexPath indexPathForRow:origRow inSection:ip.section];
+}
+%hook NewMainFrameViewController
+- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
+    NSInteger c = %orig;
+    if (!MisakaGroupingEnabled()) return c;
+    @try {
+        id logic = [self valueForKey:@"m_mainFrameLogicController"];
+        NSArray *map = PJBuildRowMap(logic);
+        if (map) objc_setAssociatedObject(self, kPJRowMap, map, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    } @catch(id e){}
+    return c;
+}
+- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)ip {
+    return %orig(tableView, PJRemap(self, ip));
+}
+- (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)ip {
+    return %orig(tableView, PJRemap(self, ip));
+}
+- (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)ip {
+    %orig(tableView, PJRemap(self, ip));
+}
+%end
+
 #pragma mark - 简单设置页(对应 PJSettingViewController)
 @interface PJSettingsViewController : UIViewController <UITableViewDataSource, UITableViewDelegate>
 @end
