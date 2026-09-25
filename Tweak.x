@@ -286,6 +286,20 @@ static NSIndexPath *PJRemap(id self, NSIndexPath *ip) {
     %orig(tableView, PJRemap(self, ip));
 }
 %end
+%hook MainFrameLogicController
+- (void)onNewMsgArriving:(id)arg1 NotifyFlag:(id)arg2 {
+    %orig;
+    if (!MisakaGroupingEnabled()) return;
+    @try {
+        UIViewController *vc = [self valueForKey:@"m_delegate"];
+        UITableView *tv = [vc valueForKey:@"m_tableView"];
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.3 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            @try { if ([tv isKindOfClass:[UITableView class]]) [tv reloadData]; } @catch(id e){}
+        });
+    } @catch(id e){}
+}
+%end
+
 
 #pragma mark - 简单设置页(对应 PJSettingViewController)
 @interface PJSettingsViewController : UIViewController <UITableViewDataSource, UITableViewDelegate>
