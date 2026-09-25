@@ -254,10 +254,16 @@ static NSArray *PJBuildRowMap(id logic) {
     } @catch(id e) { return nil; }
 }
 static NSIndexPath *PJRemap(id self, NSIndexPath *ip) {
-    NSArray *map = objc_getAssociatedObject(self, kPJRowMap);
-    if (!MisakaGroupingEnabled() || !map || ip.row >= (NSInteger)map.count) return ip;
-    NSUInteger origRow = [map[ip.row] unsignedIntegerValue];
-    return [NSIndexPath indexPathForRow:origRow inSection:ip.section];
+    if (!MisakaGroupingEnabled()) return ip;
+    @try {
+        id logic = [self valueForKey:@"m_mainFrameLogicController"];
+        NSArray *map = PJBuildRowMap(logic);
+        if (map && ip.row < (NSInteger)map.count) {
+            NSUInteger origRow = [map[ip.row] unsignedIntegerValue];
+            return [NSIndexPath indexPathForRow:origRow inSection:ip.section];
+        }
+    } @catch(id e){}
+    return ip;
 }
 %hook NewMainFrameViewController
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
