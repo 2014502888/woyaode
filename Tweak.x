@@ -231,6 +231,7 @@ static void PJDumpObjProps(id obj, NSMutableString *s, NSString *label) {
         [s writeToFile:[PJDoc() stringByAppendingPathComponent:@"pj_home_dump.txt"] atomically:YES encoding:NSUTF8StringEncoding error:nil];
     } @catch(id e){}
 }
+%end
 static const char *kPJRowMap = "pj_row_map";
 static NSArray *PJBuildRowMap(id logic) {
     @try {
