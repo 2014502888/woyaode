@@ -304,6 +304,17 @@ static NSArray *PJBuildDisplayList(id logic) {
     return c;
 }
 @end
+%hook NewMainFrameViewController
+- (void)viewDidAppear:(BOOL)animated {
+    %orig;
+    @try {
+        id ti = [self valueForKey:@"m_tableViewInfo"];
+        NSString *s = [NSString stringWithFormat:@"m_tableViewInfo class = %@", [ti class]];
+        [s writeToFile:[NSTemporaryDirectory() stringByAppendingPathComponent:@"pj_ti.txt"] atomically:YES encoding:NSUTF8StringEncoding error:nil];
+    } @catch(id e){}
+}
+%end
+
 #pragma mark - 简单设置页(对应 PJSettingViewController)
 @interface PJSettingsViewController : UIViewController <UITableViewDataSource, UITableViewDelegate>
 @end
