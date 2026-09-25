@@ -307,7 +307,7 @@ static NSArray *PJBuildDisplayList(id logic) {
 %hook NewMainFrameViewController
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
     NSInteger c = %orig;
-    if (!MisakaGroupingEnabled()) return c;
+    if (!MisakaGroupingEnabled() || section != 0) return c;
     @try {
         NSArray *list = PJBuildDisplayList([self valueForKey:@"m_mainFrameLogicController"]);
         if (list) return list.count;
