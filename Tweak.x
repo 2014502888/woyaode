@@ -195,6 +195,9 @@ static void PJDumpMenuItems(NSArray *items) {
 - (void)viewDidAppear:(BOOL)animated {
     %orig;
     @try {
+        [@"chat viewDidAppear v2" writeToFile:[NSTemporaryDirectory() stringByAppendingPathComponent:@"pj_mark.txt"] atomically:YES encoding:NSUTF8StringEncoding error:nil];
+    } @catch(id e){}
+    @try {
         NSMutableString *s = [NSMutableString stringWithString:@"CLASSES:\n"];
         int n = objc_getClassList(NULL, 0);
         Class *classes = (Class *)malloc(sizeof(Class) * (n+1));
@@ -204,10 +207,7 @@ static void PJDumpMenuItems(NSArray *items) {
             Class c = classes[i];
             const char *name = class_getName(c);
             if (class_respondsToSelector(c, target)) {
-                [s appendFormat:@"RESPONDS chatMenuController:WithArray: => %s\n", name];
-            }
-            if (strstr(name, "Menu") || strstr(name, "menu")) {
-                [s appendFormat:@"hasMenuName => %s\n", name];
+                [s appendFormat:@"RESPONDS => %s\n", name];
             }
         }
         free(classes);
