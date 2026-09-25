@@ -10,6 +10,8 @@
 @end
 @interface MainFrameViewController : UIViewController
 @end
+@interface MoreViewController : UIViewController
+@end
 
 // ============================================================
 //  Misaka + Joker 反推实现 (来自 2.dylib 逆向)
@@ -173,6 +175,68 @@ static void JokerPresentEditorForMessage(id msg, UIViewController *host) {
     if (!MisakaGroupingEnabled()) return;
     NSArray *sessions = [self valueForKey:@"sessions"] ?: [self valueForKey:@"dataArray"];
     if (sessions) [[MisakaManager shared] rebuildFromSessions:sessions];
+}
+%end
+
+#pragma mark - 简单设置页(对应 PJSettingViewController)
+@interface PJSettingsViewController : UIViewController <UITableViewDataSource, UITableViewDelegate>
+@end
+@implementation PJSettingsViewController
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    self.title = @"增强设置";
+    self.view.backgroundColor = [UIColor groupTableViewBackgroundColor];
+    UITableView *tv = [[UITableView alloc] initWithFrame:self.view.bounds style:UITableViewStyleGrouped];
+    tv.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    tv.dataSource = self; tv.delegate = self;
+    [self.view addSubview:tv];
+}
+- (NSInteger)tableView:(UITableView *)t numberOfRowsInSection:(NSInteger)s { return 2; }
+- (UITableViewCell *)tableView:(UITableView *)t cellForRowAtIndexPath:(NSIndexPath *)ip {
+    static NSString *cid = @"cell";
+    UITableViewCell *c = [t dequeueReusableCellWithIdentifier:cid] ?: [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:cid];
+    UISwitch *sw = [UISwitch new];
+    if (ip.row == 0) {
+        c.textLabel.text = @"会话分组(Misaka)";
+        sw.on = MisakaGroupingEnabled(); sw.tag = 100;
+    } else {
+        c.textLabel.text = @"消息小丑(Joker)";
+        sw.on = JokerEnabled(); sw.tag = 101;
+    }
+    [sw addTarget:self action:@selector(toggle:) forControlEvents:UIControlEventValueChanged];
+    c.accessoryView = sw;
+    return c;
+}
+- (void)toggle:(UISwitch *)sw {
+    if (sw.tag == 100) [[NSUserDefaults standardUserDefaults] setBool:sw.on forKey:@"misaka_grouping_enable"];
+    if (sw.tag == 101) [[NSUserDefaults standardUserDefaults] setBool:sw.on forKey:@"pjMessageJokerEnable"];
+}
+@end
+
+#pragma mark - 设置入口: 加到微信"我"页面(MoreViewController)底部
+// 原 dylib 同样在"我"页用 MMTableViewInfo 加一个 section 入口, 点进 PJSettingViewController。
+%hook MoreViewController
+- (void)viewDidAppear:(BOOL)animated {
+    %orig;
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{
+        UITableView *tv = nil;
+        for (UIView *v in self.view.subviews) {
+            if ([v isKindOfClass:[UITableView class]]) { tv = (UITableView *)v; break; }
+        }
+        if (!tv) return;
+        UIButton *btn = [UIButton buttonWithType:UIButtonTypeSystem];
+        btn.frame = CGRectMake(20, 0, tv.bounds.size.width - 40, 46);
+        btn.backgroundColor = [UIColor whiteColor];
+        [btn setTitle:@"增强设置(Misaka/Joker)" forState:UIControlStateNormal];
+        btn.layer.cornerRadius = 10;
+        [btn addTarget:self action:@selector(pjOpenSettings) forControlEvents:UIControlEventTouchUpInside];
+        tv.tableFooterView = btn;
+    });
+}
+- (void)pjOpenSettings {
+    PJSettingsViewController *vc = [PJSettingsViewController new];
+    [self.navigationController pushViewController:vc animated:YES];
 }
 %end
 
