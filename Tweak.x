@@ -166,7 +166,7 @@ static UIScrollView *PJFindAnyScroll(UIView *v) {
     UIScrollView *sv = PJFindAnyScroll(self.view);
     if (!sv) return;
     for (UIGestureRecognizer *g in sv.gestureRecognizers) {
-        if ([g isKindOfClass:[UILongPressGestureRecognizer class] && g.minimumPressDuration == 0.7) return;
+        if ([g isKindOfClass:[UILongPressGestureRecognizer class] && ((UILongPressGestureRecognizer *)g).minimumPressDuration == 0.7) return;
     }
     UILongPressGestureRecognizer *lp = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(pjJokerLong:)];
     lp.minimumPressDuration = 0.7;
