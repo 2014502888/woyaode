@@ -230,54 +230,6 @@ static void PJDumpObjProps(id obj, NSMutableString *s, NSString *label) {
     } @catch(id e){}
 }
 %end
-
-static NSArray *PJSortSessions(NSArray *arr) {
-    NSMutableArray *single = [NSMutableArray new];
-    NSMutableArray *group = [NSMutableArray new];
-    NSMutableArray *other = [NSMutableArray new];
-    for (id cell in arr) {
-        NSString *un = [cell valueForKey:@"_userName"];
-        if ([un hasSuffix:@"@chatroom"]) [group addObject:cell];
-        else if ([un hasPrefix:@"gh_"]) [other addObject:cell];
-        else [single addObject:cell];
-    }
-    NSMutableArray *r = [NSMutableArray new];
-    [r addObjectsFromArray:single];
-    [r addObjectsFromArray:group];
-    [r addObjectsFromArray:other];
-    return r;
-}
-static NSArray *PJSortSessions(NSArray *arr) {
-    NSMutableArray *single = [NSMutableArray new];
-    NSMutableArray *group = [NSMutableArray new];
-    NSMutableArray *other = [NSMutableArray new];
-    for (id cell in arr) {
-        NSString *un = [cell valueForKey:@"_userName"];
-        if ([un hasSuffix:@"@chatroom"]) [group addObject:cell];
-        else if ([un hasPrefix:@"gh_"]) [other addObject:cell];
-        else [single addObject:cell];
-    }
-    NSMutableArray *r = [NSMutableArray new];
-    [r addObjectsFromArray:single];
-    [r addObjectsFromArray:group];
-    [r addObjectsFromArray:other];
-    return r;
-}
-static void PJApplySort(id vc) {
-    @try {
-        id logic = [vc valueForKey:@"m_mainFrameLogicController"];
-        NSMutableArray *arr = [logic valueForKey:@"m_frontSessionArray"];
-        if (![arr isKindOfClass:[NSMutableArray class]] || arr.count < 2) return;
-        NSArray *sorted = PJSortSessions(arr);
-        [arr removeAllObjects];
-        [arr addObjectsFromArray:sorted];
-        UITableView *tv = [vc valueForKey:@"m_tableView"];
-        if ([tv isKindOfClass:[UITableView class]]) [tv reloadData];
-    } @catch(id e){}
-}
-static NSArray *PJOrderKeys(void) {
-    return @[@"single", @"group", @"other"];
-}
 static NSArray *PJSortCells(NSArray *arr) {
     NSMutableArray *single = [NSMutableArray new];
     NSMutableArray *group = [NSMutableArray new];
