@@ -153,37 +153,35 @@ static void JokerPresentEditorForMessage(id msg, UIViewController *host) {
 %end
 
 #pragma mark - Hook: 聊天页 (BaseMsgContentViewController)
-// 8.0.78 长按走 contextMenu: 拿到微信菜单后塞一个"小丑"动作。
+// 先做能看见的: 进聊天页挂长按手势, 长按即弹小丑面板(不依赖微信菜单)。
+static UIScrollView *PJFindAnyScroll(UIView *v) {
+    if ([v isKindOfClass:[UIScrollView class]]) return (UIScrollView *)v;
+    for (UIView *s in v.subviews) { UIScrollView *r = PJFindAnyScroll(s); if (r) return r; }
+    return nil;
+}
 %hook BaseMsgContentViewController
-- (UIContextMenuConfiguration *)tableView:(UITableView *)tableView contextMenuConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath point:(CGPoint)point {
-    UIContextMenuConfiguration *orig = %orig;
-    if (!JokerEnabled() || !orig) return orig;
+- (void)viewDidAppear:(BOOL)animated {
+    %orig;
+    if (!JokerEnabled()) return;
+    UIScrollView *sv = PJFindAnyScroll(self.view);
+    if (!sv) return;
+    for (UIGestureRecognizer *g in sv.gestureRecognizers) {
+        if ([g isKindOfClass:[UILongPressGestureRecognizer class] && g.minimumPressDuration == 0.7) return;
+    }
+    UILongPressGestureRecognizer *lp = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(pjJokerLong:)];
+    lp.minimumPressDuration = 0.7;
+    [sv addGestureRecognizer:lp];
+}
+- (void)pjJokerLong:(UILongPressGestureRecognizer *)g {
+    if (g.state != UIGestureRecognizerStateBegan) return;
+    if (!JokerEnabled()) return;
+    id msg = nil;
     @try {
-        id provider = [orig valueForKey:@"actionProvider"] ?: [orig valueForKey:@"menuProvider"];
-        id previewProv = [orig valueForKey:@"previewProvider"];
-        UIContextMenuConfiguration *wrapped = [UIContextMenuConfiguration
-            configurationWithIdentifier:orig.identifier
-            previewProvider:^UIViewController*{
-                @try { if (previewProv) return ((UIViewController*(^)(void))previewProv)(); } @catch(id e){}
-                return nil;
-            }
-            actionProvider:^UIMenu*(NSArray *suggestions){
-                UIMenu *origMenu = nil;
-                @try { if (provider) origMenu = ((UIMenu*(^)(NSArray*))provider)(suggestions); } @catch(id e){}
-                NSMutableArray *children = [origMenu.children mutableCopy] ?: [NSMutableArray new];
-                UIAction *joker = [UIAction actionWithTitle:@"小丑" image:[UIImage systemImageNamed:@"face.smiling"] identifier:nil handler:^(UIAction *action){
-                    dispatch_async(dispatch_get_main_queue(), ^{
-                        @try {
-                            id msg = [self valueForKey:@"currentSelectedMessage"];
-                            JokerPresentEditorForMessage(msg, self);
-                        } @catch(id e){}
-                    });
-                }];
-                [children addObject:joker];
-                return [UIMenu menuWithTitle:@"" children:children];
-            }];
-        return wrapped;
-    } @catch(id e) { return orig; }
+        msg = [self valueForKey:@"currentSelectedMessage"]
+           ?: [self valueForKey:@"message"]
+           ?: [self valueForKey:@"curMessageWrap"];
+    } @catch(id e){}
+    JokerPresentEditorForMessage(msg, self);
 }
 %end
 #pragma mark - Hook: 首页会话列表 (MainFrameViewController)
