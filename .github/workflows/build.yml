@@ -22,11 +22,9 @@ jobs:
           export THEOS=$HOME/theos
           make package FINALPACKAGE=1
 
-      - name: Upload deb/dylib
+      - name: Upload dylib only
         uses: actions/upload-artifact@v4
         with:
-          name: tweak-output
-          path: |
-            packages/*.deb
-            .theos/_/Products/DynamicLibraries/*.dylib
-          if-no-files-found: warn
+          name: MisakaJokerTweak-dylib
+          path: .theos/_/Products/DynamicLibraries/*.dylib
+          if-no-files-found: error
