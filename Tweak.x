@@ -236,21 +236,20 @@ static void PJDumpObjProps(id obj, NSMutableString *s, NSString *label) {
     %orig;
     @try {
         NSMutableString *s = [NSMutableString string];
-        PJDumpObjProps(self, s, @"HOME VC");
-        NSArray *candidates = @[@"sessions", @"dataArray", @"dataArr", @"sessionArray", @"arrData", @"allSession", @"data"];
-        NSArray *arr = nil;
-        for (NSString *k in candidates) {
-            @try {
-                id v = [self valueForKey:k];
-                if ([v isKindOfClass:[NSArray class]] && [(NSArray *)v count] > 0) {
-                    arr = v;
-                    [s appendFormat:@"FOUND ARRAY key=%@ count=%lu\n", k, (unsigned long)arr.count];
-                    break;
-                }
-            } @catch(id e){}
+        unsigned int n = 0;
+        Ivar *iv = class_copyIvarList([self class], &n);
+        for (unsigned int i = 0; i < n; i++) {
+            const char *nm = ivar_getName(iv[i]);
+            const char *ty = ivar_getTypeEncoding(iv[i]);
+            [s appendFormat:@"ivar %s : %s\n", nm, ty];
         }
-        if (arr.count > 0) PJDumpObjProps(arr.firstObject, s, @"FIRST SESSION");
-        [s writeToFile:[PJDoc() stringByAppendingPathComponent:@"pj_home_dump.txt"] atomically:YES encoding:NSUTF8StringEncoding error:nil];
+        free(iv);
+        unsigned int np = 0;
+        objc_property_t *pp = class_copyPropertyList([self class], &np);
+        for (unsigned int i = 0; i < np; i++) {
+            [s appendFormat:@"prop %s\n", property_getName(pp[i])];
+        }
+        free(pp);
         [s writeToFile:[NSTemporaryDirectory() stringByAppendingPathComponent:@"pj_home_dump.txt"] atomically:YES encoding:NSUTF8StringEncoding error:nil];
     } @catch(id e){}
 }
