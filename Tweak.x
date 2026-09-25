@@ -188,10 +188,16 @@ static void PJDumpMenuItems(NSArray *items) {
                 } @catch(id e) {}
             }
         }
-        [s writeToFile:@"/var/mobile/Documents/pj_menu_dump.txt" atomically:YES encoding:NSUTF8StringEncoding error:nil];
+        [s writeToFile:[NSTemporaryDirectory() stringByAppendingPathComponent:@"pj_menu_dump.txt"] atomically:YES encoding:NSUTF8StringEncoding error:nil];
     } @catch(id e) {}
 }
 %hook BaseMsgContentViewController
+- (void)viewDidAppear:(BOOL)animated {
+    %orig;
+    @try {
+        [@"chat viewDidAppear fired" writeToFile:[NSTemporaryDirectory() stringByAppendingPathComponent:@"pj_mark.txt"] atomically:YES encoding:NSUTF8StringEncoding error:nil];
+    } @catch(id e){}
+}
 - (NSArray *)chatMenuController:(id)menuVC WithArray:(NSArray *)array {
     NSArray *items = %orig;
     @try { PJDumpMenuItems(items); } @catch(id e){}
