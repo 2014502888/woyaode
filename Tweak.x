@@ -225,6 +225,24 @@ static UITableView *PJFindTableView(UIView *view) {
     }
     return nil;
 }
+static UIViewController *PJTopmostVC(void) {
+    UIViewController *top = [UIApplication sharedApplication].keyWindow.rootViewController;
+    while (top.presentedViewController) top = top.presentedViewController;
+    return top;
+}
+@interface PJButtonTarget : NSObject
+@end
+@implementation PJButtonTarget
+- (void)pjOnTap {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        PJSettingsViewController *s = [PJSettingsViewController new];
+        s.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemDone target:s action:@selector(pjDismiss)];
+        UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:s];
+        UIViewController *top = PJTopmostVC();
+        if (top) [top presentViewController:nav animated:YES completion:nil];
+    });
+}
+@end
 static void PJAddSettingsEntry(UIViewController *vc) {
     UITableView *tv = PJFindTableView(vc.view);
     if (!tv) return;
@@ -235,20 +253,10 @@ static void PJAddSettingsEntry(UIViewController *vc) {
     btn.accessibilityLabel = @"pj_entry";
     [btn setTitle:@"增强设置(Misaka/Joker)" forState:UIControlStateNormal];
     btn.titleLabel.font = [UIFont systemFontOfSize:16];
-    [btn addTarget:vc action:@selector(pjOpenSettings) forControlEvents:UIControlEventTouchUpInside];
+    PJButtonTarget *t = [PJButtonTarget new];
+    objc_setAssociatedObject(btn, "pj_btn_target", t, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    [btn addTarget:t action:@selector(pjOnTap) forControlEvents:UIControlEventTouchUpInside];
     tv.tableFooterView = btn;
-}
-static UIViewController *PJTopmostVC(void) {
-    UIViewController *top = [UIApplication sharedApplication].keyWindow.rootViewController;
-    while (top.presentedViewController) top = top.presentedViewController;
-    return top;
-}
-static void PJOpenSettingsPush(UIViewController *vc) {
-    PJSettingsViewController *s = [PJSettingsViewController new];
-    s.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemDone target:s action:@selector(pjDismiss)];
-    UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:s];
-    UIViewController *top = PJTopmostVC() ?: vc;
-    [top presentViewController:nav animated:YES completion:nil];
 }
 
 %hook MoreViewController
@@ -256,7 +264,7 @@ static void PJOpenSettingsPush(UIViewController *vc) {
     %orig;
     PJAddSettingsEntry(self);
 }
-- (void)pjOpenSettings { PJOpenSettingsPush(self); }
+
 %end
 
 %hook NewSettingViewController
@@ -264,7 +272,7 @@ static void PJOpenSettingsPush(UIViewController *vc) {
     %orig;
     PJAddSettingsEntry(self);
 }
-- (void)pjOpenSettings { PJOpenSettingsPush(self); }
+
 %end
 
 %ctor {
