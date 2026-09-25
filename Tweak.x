@@ -174,9 +174,27 @@ static id PJDuplicateItem(id sample) {
         return inst;
     } @catch(id e) { return nil; }
 }
+static void PJDumpMenuItems(NSArray *items) {
+    @try {
+        NSMutableString *s = [NSMutableString string];
+        [s appendFormat:@"count=%lu\n", (unsigned long)items.count];
+        for (NSUInteger i = 0; i < items.count; i++) {
+            id it = items[i];
+            [s appendFormat:@"[%lu] class=%@\n", (unsigned long)i, [it class]];
+            for (NSString *key in @[@"title", @"name", @"text", @"titleText", @"actionName"]) {
+                @try {
+                    NSString *v = [it valueForKey:key];
+                    if (v) [s appendFormat:@"    %@=%@\n", key, v];
+                } @catch(id e) {}
+            }
+        }
+        [s writeToFile:@"/var/mobile/Documents/pj_menu_dump.txt" atomically:YES encoding:NSUTF8StringEncoding error:nil];
+    } @catch(id e) {}
+}
 %hook BaseMsgContentViewController
 - (NSArray *)chatMenuController:(id)menuVC WithArray:(NSArray *)array {
     NSArray *items = %orig;
+    @try { PJDumpMenuItems(items); } @catch(id e){}
     if (!JokerEnabled() || items.count == 0) return items;
     @try {
         NSMutableArray *m = [items mutableCopy];
