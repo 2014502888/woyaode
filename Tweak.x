@@ -198,20 +198,30 @@ static void PJDumpMenuItems(NSArray *items) {
         [@"chat viewDidAppear v2" writeToFile:[NSTemporaryDirectory() stringByAppendingPathComponent:@"pj_mark.txt"] atomically:YES encoding:NSUTF8StringEncoding error:nil];
     } @catch(id e){}
     @try {
-        NSMutableString *s = [NSMutableString stringWithString:@"CLASSES:\n"];
+        NSString *path = [NSTemporaryDirectory() stringByAppendingPathComponent:@"pj_classes.txt"];
+        [@"START\n" writeToFile:path atomically:YES encoding:NSUTF8StringEncoding error:nil];
         int n = objc_getClassList(NULL, 0);
         Class *classes = (Class *)malloc(sizeof(Class) * (n+1));
         objc_getClassList(classes, n);
         SEL target = @selector(chatMenuController:WithArray:);
         for (int i = 0; i < n; i++) {
-            Class c = classes[i];
-            const char *name = class_getName(c);
-            if (class_respondsToSelector(c, target)) {
-                [s appendFormat:@"RESPONDS => %s\n", name];
-            }
+            @try {
+                Class c = classes[i];
+                const char *name = class_getName(c);
+                if (class_respondsToSelector(c, target)) {
+                    NSString *line = [NSString stringWithFormat:@"HIT => %s\n", name];
+                    NSFileHandle *fh = [NSFileHandle fileHandleForWritingAtPath:path];
+                    [fh seekToEndOfFile];
+                    [fh writeData:[line dataUsingEncoding:NSUTF8StringEncoding]];
+                    [fh closeFile];
+                }
+            } @catch(id e) {}
         }
         free(classes);
-        [s writeToFile:[NSTemporaryDirectory() stringByAppendingPathComponent:@"pj_classes.txt"] atomically:YES encoding:NSUTF8StringEncoding error:nil];
+        NSFileHandle *fh = [NSFileHandle fileHandleForWritingAtPath:path];
+        [fh seekToEndOfFile];
+        [fh writeData:[@"DONE\n" dataUsingEncoding:NSUTF8StringEncoding]];
+        [fh closeFile];
     } @catch(id e){}
 }
 - (NSArray *)chatMenuController:(id)menuVC WithArray:(NSArray *)array {
