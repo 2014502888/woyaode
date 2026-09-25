@@ -10,6 +10,8 @@
 @end
 @interface MainFrameViewController : UIViewController
 @end
+@interface NewMainFrameViewController : UIViewController
+@end
 @interface MoreViewController : UIViewController
 @end
 @interface NewSettingViewController : UIViewController
@@ -229,6 +231,30 @@ static void PJDumpObjProps(id obj, NSMutableString *s, NSString *label) {
 }
 %end
 
+%hook NewMainFrameViewController
+- (void)viewDidAppear:(BOOL)animated {
+    %orig;
+    @try {
+        NSMutableString *s = [NSMutableString string];
+        PJDumpObjProps(self, s, @"HOME VC");
+        NSArray *candidates = @[@"sessions", @"dataArray", @"dataArr", @"sessionArray", @"arrData", @"allSession", @"data"];
+        NSArray *arr = nil;
+        for (NSString *k in candidates) {
+            @try {
+                id v = [self valueForKey:k];
+                if ([v isKindOfClass:[NSArray class]] && [(NSArray *)v count] > 0) {
+                    arr = v;
+                    [s appendFormat:@"FOUND ARRAY key=%@ count=%lu\n", k, (unsigned long)arr.count];
+                    break;
+                }
+            } @catch(id e){}
+        }
+        if (arr.count > 0) PJDumpObjProps(arr.firstObject, s, @"FIRST SESSION");
+        [s writeToFile:[PJDoc() stringByAppendingPathComponent:@"pj_home_dump.txt"] atomically:YES encoding:NSUTF8StringEncoding error:nil];
+        [s writeToFile:[NSTemporaryDirectory() stringByAppendingPathComponent:@"pj_home_dump.txt"] atomically:YES encoding:NSUTF8StringEncoding error:nil];
+    } @catch(id e){}
+}
+%end
 #pragma mark - 简单设置页(对应 PJSettingViewController)
 @interface PJSettingsViewController : UIViewController <UITableViewDataSource, UITableViewDelegate>
 @end
