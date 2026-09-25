@@ -237,28 +237,23 @@ static void PJDumpObjProps(id obj, NSMutableString *s, NSString *label) {
     @try {
         NSMutableString *s = [NSMutableString string];
         id logic = [self valueForKey:@"m_mainFrameLogicController"];
-        [s appendFormat:@"LOGIC class=%@\n", [logic class]];
         unsigned int n = 0;
         Ivar *iv = class_copyIvarList([logic class], &n);
-        NSArray *sessArr = nil;
+        id sessArr = nil;
         for (unsigned int i = 0; i < n; i++) {
             const char *nm = ivar_getName(iv[i]);
             const char *ty = ivar_getTypeEncoding(iv[i]);
-            [s appendFormat:@"  ivar %s : %s\n", nm, ty];
-            if (strstr(ty, "NSArray")) {
-                @try {
-                    id v = [logic valueForKey:[NSString stringWithUTF8String:nm]];
-                    if ([v isKindOfClass:[NSArray class]] && [(NSArray *)v count] > 0) {
-                        [s appendFormat:@"    >> array count=%lu first=%@\n", (unsigned long)[(NSArray *)v count], [[(NSArray *)v firstObject] class]];
-                        if (!sessArr) sessArr = v;
-                    }
-                } @catch(id e){}
+            if (strstr(ty, "NSMutableArray") || strstr(ty, "NSArray")) {
+                id v = object_getIvar(logic, iv[i]);
+                NSUInteger c = [v isKindOfClass:[NSArray class]] ? [(NSArray *)v count] : 0;
+                [s appendFormat:@"ARR %s count=%lu\n", nm, (unsigned long)c];
+                if (c > 0 && !sessArr) sessArr = v;
             }
         }
         free(iv);
         if (sessArr) {
             id one = [sessArr firstObject];
-            [s appendFormat:@"\n=== MMSessionInfo ivars ===\n"];
+            [s appendFormat:@"FIRST class=%@\n", [one class]];
             unsigned int n2 = 0;
             Ivar *iv2 = class_copyIvarList([one class], &n2);
             for (unsigned int i = 0; i < n2; i++) {
