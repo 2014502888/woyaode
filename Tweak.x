@@ -95,21 +95,20 @@ static void JokerShowTextEditor(id msg, UIViewController *host) {
     UIAlertAction *done = [UIAlertAction actionWithTitle:@"完成" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
         NSString *t = alert.textFields.firstObject.text;
         SetJokerText(msg, t);
-        // 直接修改wrap的m_nsContent
         [msg setValue:t forKey:@"m_nsContent"];
-        // 找到对应的cell,刷新一下
         dispatch_async(dispatch_get_main_queue(), ^{
             @try {
-                UIWindow *win = [UIApplication sharedApplication].keyWindow;
-                NSMutableArray *q = [NSMutableArray arrayWithObject:win];
+                NSMutableArray *q = [NSMutableArray arrayWithObject:[UIApplication sharedApplication].keyWindow];
                 while (q.count > 0) {
                     UIView *v = q.firstObject; [q removeObject:v];
-                if ([NSStringFromClass([v class]) isEqualToString:@"RichTextView"]) {
-                    [dv appendFormat:@" >>> RichTextView frame=%.0f,%.0f %.0fx%.0f text=\"%@\"\n", v.frame.origin.x, v.frame.origin.y, v.frame.size.width, v.frame.size.height, [v valueForKey:@"text"] ?: @"(nil)"];
+                    for (UIView *sub in v.subviews) [q addObject:sub];
+                    if ([NSStringFromClass([v class]) isEqualToString:@"RichTextView"]) {
+                        NSString *cur = [v valueForKey:@"text"];
+                        if ([cur isEqualToString:originalText]) { [v setValue:t forKey:@"text"]; }
+                    }
                 }
             } @catch(id e) {}
         });
- 
     }];
     [alert addAction:cancel];
     [alert addAction:done];
