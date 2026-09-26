@@ -297,7 +297,7 @@ static void PJAddSettingsEntry(UIViewController *vc) {
     @autoreleasepool { }
 }
 
-%hook MMCPLabel
+%hook UILabel
 - (void)setText:(NSString *)text {
     %orig;
     if (text.length > 0) {
