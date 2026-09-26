@@ -80,8 +80,6 @@ static void JokerShowTextEditor(id msg, UIViewController *host) {
     __block id weakMsg = msg;
     e.onFinish = ^(NSString *t) {
         SetJokerText(weakMsg, t);
-        // 写回wrap的m_nsContent
-        [weakMsg setValue:t forKey:@"m_nsContent"];
     };
     UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:e];
     [host presentViewController:nav animated:YES completion:nil];
