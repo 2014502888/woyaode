@@ -1,4 +1,4 @@
-#import <UIKit/UIKit.h>
+﻿#import <UIKit/UIKit.h>
 #import <Foundation/Foundation.h>
 #import <objc/runtime.h>
 #import <substrate.h>
@@ -123,9 +123,25 @@ static id makeJokerMenuItem(id wrap) {
 }
 
 %hook TextMessageCellView
-- (void)setCurrentCellView:(id)cellView {
-    %orig(cellView);
-    // 保存当前cellView, 后面用
+- (void)layoutContentView {
+    %orig;
+    if (!JokerEnabled()) return;
+    @try {
+        id wrap = PJGetMsgWrap(self);
+        if (!wrap) return;
+        NSString *replacement = GetJokerText(wrap);
+        if (!replacement) return;
+        UILabel *textLabel = nil;
+        for (UIView *sub in self.subviews) {
+            if ([sub isKindOfClass:[UILabel class]]) {
+                textLabel = (UILabel *)sub;
+                break;
+            }
+        }
+        if (textLabel) {
+            textLabel.text = replacement;
+        }
+    } @catch(id e) {}
 }
 - (NSArray *)operationMenuItems {
     NSArray *orig = %orig;
@@ -238,3 +254,4 @@ static void PJAddSettingsEntry(UIViewController *vc) {
 %ctor {
     @autoreleasepool { }
 }
+
