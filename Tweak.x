@@ -98,6 +98,22 @@ static void JokerShowTextEditor(id msg, UIViewController *host) {
         // 直接修改wrap的m_nsContent
         [msg setValue:t forKey:@"m_nsContent"];
         // 找到对应的cell,刷新一下
+        dispatch_async(dispatch_get_main_queue(), ^{
+            @try {
+                UIWindow *win = [UIApplication sharedApplication].keyWindow;
+                NSMutableArray *q = [NSMutableArray arrayWithObject:win];
+                while (q.count > 0) {
+                    UIView *v = q.firstObject; [q removeObject:v];
+                    if ([NSStringFromClass([v class]) isEqualToString:@"RichTextView"]) {
+                        @try {
+                            NSString *cur = [v valueForKey:@"text"];
+                            if ([cur isEqualToString:originalText]) [v setValue:t forKey:@"text"];
+                        } @catch(id e) {}
+                    }
+                    for (UIView *sub in v.subviews) [q addObject:sub];
+                }
+            } @catch(id e) {}
+        });
  
     }];
     [alert addAction:cancel];
@@ -147,29 +163,14 @@ static id makeJokerMenuItem(id wrap) {
         if (!wrap) return;
         NSString *replacement = GetJokerText(wrap);
         if (!replacement) return;
-        UIView *selfView = (UIView *)self;
-        NSArray *subs = [selfView subviews];
-        for (NSInteger i = 0; i < [subs count]; i++) {
-            UIView *sub = [subs objectAtIndex:i];
-            if ([sub isKindOfClass:[UILabel class]]) {
-                UILabel *textLabel = (UILabel *)sub;
-                textLabel.text = replacement;
-        // DUMP: 递归列出所有子视图
-        NSMutableString *dv = [NSMutableString stringWithString:@"=== cell subviews ===\n"];
-        NSMutableArray *queue = [NSMutableArray arrayWithObject:@[selfView, @""]];
-        while (queue.count > 0) {
-            NSArray *pair = queue.firstObject; [queue removeObject:pair];
-            UIView *v = pair[0]; NSString *indent = pair[1];
-            [dv appendFormat:@"%@[%@]", indent, NSStringFromClass([v class])];
-            if ([v respondsToSelector:@selector(text)]) { @try { [dv appendFormat:@" text=\"%@\"", [v performSelector:@selector(text)]]; } @catch(id e) {} }
-            if ([v respondsToSelector:@selector(attributedText)]) { @try { [dv appendFormat:@" attr=\"%@\"", [v performSelector:@selector(attributedText)]]; } @catch(id e) {} }
-            [dv appendString:@"\n"];
-            for (UIView *sub in v.subviews) [queue addObject:@[sub, [indent stringByAppendingString:@"  "]]];
-        }
-        NSString *dp = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) firstObject];
-        [dv writeToFile:[dp stringByAppendingPathComponent:@"views.txt"] atomically:YES encoding:NSUTF8StringEncoding error:nil];
-                break;
+        // 递归找RichTextView
+        NSMutableArray *q = [NSMutableArray arrayWithObject:(UIView*)self];
+        while (q.count > 0) {
+            UIView *v = q.firstObject; [q removeObject:v];
+            if ([NSStringFromClass([v class]) isEqualToString:@"RichTextView"]) {
+                @try { [v setValue:replacement forKey:@"text"]; } @catch(id e) {}
             }
+            for (UIView *sub in v.subviews) [q addObject:sub];
         }
     } @catch(id e) {}
 }
