@@ -22,22 +22,6 @@ static UIViewController *PJTopmostVC(void) {
     return top;
 }
 
-@class JokerEditViewController;
-static void JokerShowTextEditor(id msg, UIViewController *host);
-
-static PJMenuItemTarget *g_jokerTarget = nil;
-
-@interface PJMenuItemTarget : NSObject
-@property (nonatomic, weak) id wrap;
-@end
-@implementation PJMenuItemTarget
-- (void)onJokerTapped {
-    UIViewController *host = PJTopmostVC();
-    if (!self.wrap || !host) return;
-    JokerShowTextEditor(self.wrap, host);
-}
-@end
-
 @interface JokerEditViewController : UIViewController <UITextViewDelegate>
 @property (nonatomic, strong) UITextView *textView;
 @property (nonatomic, copy) NSString *originalText;
@@ -101,21 +85,23 @@ static id PJMakeJokerMenuItem(id wrap) {
     if (!mmItem) return nil;
     UIImage *icon = [UIImage systemImageNamed:@"theatermasks"];
     if (!icon) icon = [UIImage systemImageNamed:@"pencil"];
-    if (!g_jokerTarget) g_jokerTarget = [PJMenuItemTarget new];
-    g_jokerTarget.wrap = wrap;
-    SEL initSel = @selector(initWithTitle:icon:target:action:);
+    // initWithTitle:icon:action:  (action is a block)
+    SEL initSel = @selector(initWithTitle:icon:action:);
+    id obj = [[mmItem alloc] init];
     NSMethodSignature *sig = [mmItem instanceMethodSignatureForSelector:initSel];
     if (!sig) return nil;
-    id obj = [[mmItem alloc] init];
+    __block id weakWrap = wrap;
+    void (^block)(void) = ^{
+        UIViewController *host = PJTopmostVC();
+        JokerShowTextEditor(weakWrap, host);
+    };
     NSInvocation *inv = [NSInvocation invocationWithMethodSignature:sig];
     [inv setSelector:initSel];
     [inv setTarget:obj];
     NSString *title = @"小丑";
     [inv setArgument:&title atIndex:2];
     [inv setArgument:&icon atIndex:3];
-    [inv setArgument:&g_jokerTarget atIndex:4];
-    SEL action = @selector(onJokerTapped);
-    [inv setArgument:&action atIndex:5];
+    [inv setArgument:&block atIndex:4];
     [inv invoke];
     id result;
     [inv getReturnValue:&result];
@@ -123,11 +109,11 @@ static id PJMakeJokerMenuItem(id wrap) {
 }
 
 %hook TextMessageCellView
-- (NSArray *)operationMenuItems {
-    NSArray *orig = %orig;
+- (NSArray *)injectedMenuItems:(NSArray *)items forCellView:(id)cellView {
+    NSArray *orig = %orig(items, cellView);
     if (!JokerEnabled()) return orig;
     @try {
-        id wrap = PJGetMsgWrap(self);
+        id wrap = PJGetMsgWrap(cellView ?: self);
         if (!wrap) return orig;
         id item = PJMakeJokerMenuItem(wrap);
         if (!item) return orig;
