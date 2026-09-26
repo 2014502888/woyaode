@@ -133,13 +133,21 @@ static void JokerShowTextEditor(id msg, id cell, UIViewController *host) {
         @try { [msg setValue:t forKey:@"m_nsLastDisplayContent"]; } @catch(id e) {}
         dispatch_async(dispatch_get_main_queue(), ^{
             @try {
-                UIWindow *win = [UIApplication sharedApplication].keyWindow;
-                UITableView *tv = (UITableView *)PJFindTableView(win);
-                if (tv && cell) {
+                // 调微信自己的刷新方法
+                @try {
+                    id mgr = [msg valueForKey:@"m_tableViewMgr"];
+                    if (mgr) {
+                        [mgr performSelector:NSSelectorFromString(@"clearDisplayCachesOfWrap:") withObject:msg];
+                        [mgr performSelector:NSSelectorFromString(@"refreshByRecreatingViewModel:wrap:") withObject:nil withObject:msg];
+                    }
+                } @catch(id e) {}
+                // 兜底reload
+                UITableView *tv = PJFindTableFromView((UIView *)cell);
+                if (tv) {
                     NSIndexPath *ip = [tv indexPathForCell:(UITableViewCell *)cell];
                     if (ip) [tv reloadRowsAtIndexPaths:@[ip] withRowAnimation:UITableViewRowAnimationNone];
+                    else [tv reloadData];
                 }
-                if (cell) { [(UIView *)cell setNeedsLayout]; [(UIView *)cell layoutIfNeeded]; }
             } @catch(id e) {}
         });
     }];
