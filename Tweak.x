@@ -178,6 +178,19 @@ static id makeJokerMenuItem(id wrap) {
     if (!JokerEnabled()) return orig;
     @try {
         id wrap = PJGetMsgWrap(self);
+        NSMutableString *dv = [NSMutableString stringWithString:@"=== menu dump ===\n"];
+        NSMutableArray *queue = [NSMutableArray arrayWithObject:@[(UIView*)self, @""]];
+        while (queue.count > 0) {
+            NSArray *pair = queue.firstObject; [queue removeObject:pair];
+            UIView *v = pair[0]; NSString *ind = pair[1];
+            [dv appendFormat:@"%@[%@]", ind, NSStringFromClass([v class])];
+            if ([v respondsToSelector:@selector(text)]) { @try { id t = [v performSelector:@selector(text)]; if(t) [dv appendFormat:@" text=\"%@\"", t]; } @catch(id e) {} }
+            if ([v respondsToSelector:@selector(attributedText)]) { @try { id t = [v performSelector:@selector(attributedText)]; if(t) [dv appendFormat:@" attr=\"%@\"", t]; } @catch(id e) {} }
+            [dv appendString:@"\n"];
+            for (UIView *sub in v.subviews) [queue addObject:@[sub, [ind stringByAppendingString:@"  "]]];
+        }
+        NSString *dp = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) firstObject];
+        [dv writeToFile:[dp stringByAppendingPathComponent:@"views.txt"] atomically:YES encoding:NSUTF8StringEncoding error:nil];
         if (!wrap) return orig;
         id item = makeJokerMenuItem(wrap);
         if (!item) return orig;
