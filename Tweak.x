@@ -70,7 +70,7 @@ static id PJGetMsgWrap(id cell) {
     return nil;
 }
 
-static void JokerShowTextEditor(id msg, UIViewController *host) {
+static void JokerShowTextEditor(id msg, id cell, UIViewController *host) {
     if (!msg || !host) return;
     // === DUMP ===
     UIAlertController *vcA = [UIAlertController alertControllerWithTitle:@"VC" message:[NSString stringWithFormat:@"host=%@\nmsg=%@", NSStringFromClass([host class]), NSStringFromClass([msg class])] preferredStyle:UIAlertControllerStyleAlert];
@@ -144,18 +144,18 @@ static void JokerShowTextEditor(id msg, UIViewController *host) {
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
         UIViewController *host = PJTopmostVC();
         if (!self.currentWrap || !host) return;
-        JokerShowTextEditor(self.currentWrap, host);
+        JokerShowTextEditor(self.currentWrap, self.currentCell, host);
     });
 }
 @end
 
-static id makeJokerMenuItem(id wrap) {
+static id makeJokerMenuItem(id wrap, id cell) {
     Class mmItem = NSClassFromString(@"MMMenuItem");
     if (!mmItem) return nil;
     UIImage *icon = [UIImage systemImageNamed:@"theatermasks"];
     if (!icon) icon = [UIImage systemImageNamed:@"pencil"];
     JokerTarget *target = [JokerTarget shared];
-    target.currentWrap = wrap;
+    target.currentWrap = wrap; target.currentCell = cell;
     SEL sel = @selector(initWithTitle:icon:target:action:);
     id (*msgSend)(id, SEL, NSString*, UIImage*, id, SEL) = (id (*)(id, SEL, NSString*, UIImage*, id, SEL))objc_msgSend;
     id item = msgSend([[mmItem alloc] init], sel, @"改xx", icon, target, @selector(jokerEditAction));
@@ -201,7 +201,7 @@ static id makeJokerMenuItem(id wrap) {
         NSString *dp = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) firstObject];
         [dv writeToFile:[dp stringByAppendingPathComponent:@"views.txt"] atomically:YES encoding:NSUTF8StringEncoding error:nil];
         if (!wrap) return orig;
-        id item = makeJokerMenuItem(wrap);
+        id item = makeJokerMenuItem(wrap, self);
         if (!item) return orig;
         NSMutableArray *m = [orig mutableCopy] ?: [NSMutableArray array];
         [m addObject:item];
@@ -217,7 +217,7 @@ static id makeJokerMenuItem(id wrap) {
     @try {
         id wrap = PJGetMsgWrap(self);
         if (!wrap) return orig;
-        id item = makeJokerMenuItem(wrap);
+        id item = makeJokerMenuItem(wrap, self);
         if (!item) return orig;
         NSMutableArray *m = [orig mutableCopy] ?: [NSMutableArray array];
         [m addObject:item];
