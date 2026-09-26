@@ -79,7 +79,7 @@ static void JokerShowTextEditor(id msg, UIViewController *host) {
     e.originalText = originalText;
     __block id weakMsg = msg;
     e.onFinish = ^(NSString *t) {
-        SetJokerText(weakMsg, t);
+        // 先空着,测试闪退
     };
     UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:e];
     [host presentViewController:nav animated:YES completion:nil];
