@@ -114,10 +114,9 @@ static void JokerShowTextEditor(id msg, UIViewController *host) {
                     UIView *v = q.firstObject; [q removeObject:v];
                     for (UIView *sub in v.subviews) [q addObject:sub];
                     if ([NSStringFromClass([v class]) isEqualToString:@"RichTextView"]) {
-                        NSString *cur = [v valueForKey:@"text"];
-                        if ([cur isEqualToString:originalText]) { [v setValue:t forKey:@"text"]; }
-                    }
-                }
+                    if ([NSStringFromClass([v class]) isEqualToString:@"RichTextView"]) {
+                        [v setNeedsDisplay];
+                        [v setNeedsLayout];
             } @catch(id e) {}
         });
     }];
