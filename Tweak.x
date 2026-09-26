@@ -112,16 +112,13 @@ static void JokerShowTextEditor(id msg, id cell, UIViewController *host) {
         [msg setValue:t forKey:@"m_nsContent"];
         dispatch_async(dispatch_get_main_queue(), ^{
             @try {
-                NSMutableArray *q = [NSMutableArray arrayWithObject:[UIApplication sharedApplication].keyWindow];
-                while (q.count > 0) {
-                    UIView *v = q.firstObject; [q removeObject:v];
-                    for (UIView *sub in v.subviews) [q addObject:sub];
-                    if ([NSStringFromClass([v class]) isEqualToString:@"RichTextView"]) {
-                        [v setNeedsDisplay];
-                        [v setNeedsLayout];
-                    }
+                UIView *v = (UIView *)cell;
+                while (v) {
+                    if ([v isKindOfClass:[UITableView class]]) { [(UITableView *)v reloadData]; break; }
+                    v = v.superview;
                 }
             } @catch(id e) {}
+        });
         });
     }];
     [alert addAction:cancel];
