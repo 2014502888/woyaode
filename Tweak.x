@@ -127,6 +127,7 @@ static void JokerShowTextEditor(id msg, id cell, UIViewController *host) {
 
 @interface JokerTarget : NSObject
 @property (nonatomic, weak) id currentWrap;
+@property (nonatomic, weak) id currentCell;
 + (instancetype)shared;
 @end
 @implementation JokerTarget
