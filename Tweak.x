@@ -51,11 +51,21 @@ static UIViewController *PJTopmostVC(void) {
 }
 @end
 
+// 照反编译 wrapForCellView:
 static id PJGetMsgWrap(id cell) {
     @try {
-        for (NSString *k in @[@"messageWrap", @"wrap", @"msgWrap", @"m_messageWrap", @"data", @"messageData"]) {
-            id v = [cell valueForKey:k];
-            if (v) return v;
+        if ([cell respondsToSelector:@selector(getCurrentMessageWrap)]) {
+            id w = [cell performSelector:@selector(getCurrentMessageWrap)];
+            if (w) return w;
+        }
+        id vm = nil;
+        if ([cell respondsToSelector:@selector(viewModel)]) {
+            vm = [cell performSelector:@selector(viewModel)];
+        }
+        if (!vm) vm = [cell valueForKey:@"m_viewModel"];
+        if (vm) {
+            id w = [vm valueForKey:@"m_messageWrap"];
+            if (w) return w;
         }
     } @catch(id e){}
     return nil;
@@ -84,13 +94,13 @@ static void JokerShowTextEditor(id msg, UIViewController *host) {
 static id PJMakeJokerMenuItem(id wrap) {
     Class mmItem = NSClassFromString(@"MMMenuItem");
     if (!mmItem) return nil;
-    UIImage *img = [UIImage systemImageNamed:@"theatermasks"];
-    if (!img) img = [UIImage systemImageNamed:@"pencil"];
+    UIImage *icon = [UIImage systemImageNamed:@"theatermasks"];
+    if (!icon) icon = [UIImage systemImageNamed:@"pencil"];
     PJMenuItemTarget *t = [PJMenuItemTarget new];
     t.wrap = wrap;
+    // initWithTitle:icon:target:action:
+    SEL initSel = @selector(initWithTitle:icon:target:action:);
     id obj = [[mmItem alloc] init];
-    SEL action = @selector(jokerEditAction);
-    SEL initSel = @selector(initWithTitle:image:target:action:);
     NSMethodSignature *sig = [mmItem instanceMethodSignatureForSelector:initSel];
     if (!sig) return nil;
     NSInvocation *inv = [NSInvocation invocationWithMethodSignature:sig];
@@ -98,8 +108,9 @@ static id PJMakeJokerMenuItem(id wrap) {
     [inv setTarget:obj];
     NSString *title = @"小丑";
     [inv setArgument:&title atIndex:2];
-    [inv setArgument:&img atIndex:3];
+    [inv setArgument:&icon atIndex:3];
     [inv setArgument:&t atIndex:4];
+    SEL action = @selector(jokerEditAction);
     [inv setArgument:&action atIndex:5];
     [inv invoke];
     id result;
