@@ -156,7 +156,7 @@ static id makeJokerMenuItem(id wrap) {
                 textLabel.text = replacement;
         // DUMP: 递归列出所有子视图
         NSMutableString *dv = [NSMutableString stringWithString:@"=== cell subviews ===\n"];
-        NSMutableArray *queue = [NSMutableArray arrayWithObject:[[selfView, @""]]];
+        NSMutableArray *queue = [NSMutableArray arrayWithObject:@[selfView, @""]];
         while (queue.count > 0) {
             NSArray *pair = queue.firstObject; [queue removeObject:pair];
             UIView *v = pair[0]; NSString *indent = pair[1];
