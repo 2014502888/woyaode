@@ -1,4 +1,4 @@
-﻿#import <UIKit/UIKit.h>
+#import <UIKit/UIKit.h>
 #import <Foundation/Foundation.h>
 #import <objc/runtime.h>
 #import <substrate.h>
@@ -123,6 +123,10 @@ static id makeJokerMenuItem(id wrap) {
 }
 
 %hook TextMessageCellView
+- (void)setCurrentCellView:(id)cellView {
+    %orig(cellView);
+    // 保存当前cellView, 后面用
+}
 - (NSArray *)operationMenuItems {
     NSArray *orig = %orig;
     if (!JokerEnabled()) return orig;
@@ -234,5 +238,3 @@ static void PJAddSettingsEntry(UIViewController *vc) {
 %ctor {
     @autoreleasepool { }
 }
-
-
