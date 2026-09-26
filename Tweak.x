@@ -71,6 +71,13 @@ static id PJGetMsgWrap(id cell) {
 }
 
 static UITableView *PJFindTableView(UIView *view);
+static UITableView *PJFindTableFromView(UIView *v) {
+    while (v) {
+        if ([v isKindOfClass:[UITableView class]]) return (UITableView *)v;
+        v = v.superview;
+    }
+    return nil;
+}
 static void PJSetMatchingLabel(UIView *view, NSString *origText, NSString *newText) {
     if ([view isKindOfClass:[UILabel class]]) {
         UILabel *l = (UILabel *)view;
