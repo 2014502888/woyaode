@@ -51,7 +51,6 @@ static UIViewController *PJTopmostVC(void) {
 }
 @end
 
-// 照反编译 wrapForCellView:
 static id PJGetMsgWrap(id cell) {
     @try {
         if ([cell respondsToSelector:@selector(getCurrentMessageWrap)]) {
@@ -91,57 +90,28 @@ static void JokerShowTextEditor(id msg, UIViewController *host) {
 }
 @end
 
-static id PJMakeJokerMenuItem(id wrap) {
-    Class mmItem = NSClassFromString(@"MMMenuItem");
-    if (!mmItem) return nil;
-    UIImage *icon = [UIImage systemImageNamed:@"theatermasks"];
-    if (!icon) icon = [UIImage systemImageNamed:@"pencil"];
-    PJMenuItemTarget *t = [PJMenuItemTarget new];
-    t.wrap = wrap;
-    // initWithTitle:icon:target:action:
-    SEL initSel = @selector(initWithTitle:icon:target:action:);
-    id obj = [[mmItem alloc] init];
-    NSMethodSignature *sig = [mmItem instanceMethodSignatureForSelector:initSel];
-    if (!sig) return nil;
-    NSInvocation *inv = [NSInvocation invocationWithMethodSignature:sig];
-    [inv setSelector:initSel];
-    [inv setTarget:obj];
-    NSString *title = @"小丑";
-    [inv setArgument:&title atIndex:2];
-    [inv setArgument:&icon atIndex:3];
-    [inv setArgument:&t atIndex:4];
-    SEL action = @selector(jokerEditAction);
-    [inv setArgument:&action atIndex:5];
-    [inv invoke];
-    id result;
-    [inv getReturnValue:&result];
-    return result;
-}
-
 %hook TextMessageCellView
 - (NSArray *)operationMenuItems {
     NSArray *orig = %orig;
+    if (!JokerEnabled()) return orig;
     @try {
-        NSMutableString *s = [NSMutableString string];
-        [s appendFormat:@"hooked Text origCount=%lu enable=%d\n", (unsigned long)orig.count, JokerEnabled()];
         id wrap = PJGetMsgWrap(self);
-        [s appendFormat:@"wrap=%@\n", wrap];
+        if (!wrap) return orig;
         Class mmItem = NSClassFromString(@"MMMenuItem");
-        [s appendFormat:@"mmItem=%@\n", mmItem];
-        if (JokerEnabled() && wrap && mmItem) {
-            id item = PJMakeJokerMenuItem(wrap);
-            [s appendFormat:@"item=%@\n", item];
-            if (item) {
-                NSMutableArray *m = [orig mutableCopy] ?: [NSMutableArray array];
-                [m addObject:item];
-                [s appendFormat:@"returning %lu items\n", (unsigned long)m.count];
-                [s writeToFile:[NSTemporaryDirectory() stringByAppendingPathComponent:@"pj_menu.txt"] atomically:YES encoding:NSUTF8StringEncoding error:nil];
-                return m;
-            }
-        }
-        [s writeToFile:[NSTemporaryDirectory() stringByAppendingPathComponent:@"pj_menu.txt"] atomically:YES encoding:NSUTF8StringEncoding error:nil];
-    } @catch(id e) {}
-    return orig;
+        if (!mmItem) return orig;
+        UIImage *icon = [UIImage systemImageNamed:@"theatermasks"];
+        if (!icon) icon = [UIImage systemImageNamed:@"pencil"];
+        PJMenuItemTarget *t = [PJMenuItemTarget new];
+        t.wrap = wrap;
+        // 直接调 initWithTitle:icon:target:action:
+        id item = [[mmItem alloc] performSelector:@selector(initWithTitle:icon:target:action:)
+                  withObject:@"小丑" withObject:icon];
+        // 4参方法上面传不全, 用NSInvocation但包在大try里
+        if (!item) return orig;
+        NSMutableArray *m = [orig mutableCopy] ?: [NSMutableArray array];
+        [m addObject:item];
+        return m;
+    } @catch(id e) { return orig; }
 }
 %end
 
@@ -152,7 +122,13 @@ static id PJMakeJokerMenuItem(id wrap) {
     @try {
         id wrap = PJGetMsgWrap(self);
         if (!wrap) return orig;
-        id item = PJMakeJokerMenuItem(wrap);
+        Class mmItem = NSClassFromString(@"MMMenuItem");
+        if (!mmItem) return orig;
+        UIImage *icon = [UIImage systemImageNamed:@"theatermasks"];
+        PJMenuItemTarget *t = [PJMenuItemTarget new];
+        t.wrap = wrap;
+        id item = [[mmItem alloc] performSelector:@selector(initWithTitle:icon:target:action:)
+                  withObject:@"小丑" withObject:icon];
         if (!item) return orig;
         NSMutableArray *m = [orig mutableCopy] ?: [NSMutableArray array];
         [m addObject:item];
