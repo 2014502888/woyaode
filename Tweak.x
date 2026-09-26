@@ -8,32 +8,143 @@ static BOOL JokerEnabled(void) {
            [[NSUserDefaults standardUserDefaults] boolForKey:@"pjMessageJokerEnable"];
 }
 
+static const char *kJokerText = "joker_text";
+static void SetJokerText(id msg, NSString *t) {
+    objc_setAssociatedObject(msg, kJokerText, t, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+}
+static NSString *GetJokerText(id msg) {
+    return objc_getAssociatedObject(msg, kJokerText);
+}
+
 static UIViewController *PJTopmostVC(void) {
     UIViewController *top = [UIApplication sharedApplication].keyWindow.rootViewController;
     while (top.presentedViewController) top = top.presentedViewController;
     return top;
 }
 
+@interface JokerEditViewController : UIViewController <UITextViewDelegate>
+@property (nonatomic, strong) UITextView *textView;
+@property (nonatomic, copy) NSString *originalText;
+@property (nonatomic, copy) void (^onFinish)(NSString *newText);
+@end
+@implementation JokerEditViewController
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    self.view.backgroundColor = [UIColor whiteColor];
+    self.title = @"小丑改文字";
+    self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:@"取消" style:UIBarButtonItemStylePlain target:self action:@selector(onCancel)];
+    self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:@"完成" style:UIBarButtonItemStyleDone target:self action:@selector(onFinish)];
+    self.textView = [[UITextView alloc] initWithFrame:self.view.bounds];
+    self.textView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    self.textView.font = [UIFont systemFontOfSize:18];
+    self.textView.text = self.originalText ?: @"";
+    [self.view addSubview:self.textView];
+}
+- (void)viewDidAppear:(BOOL)animated {
+    [super viewDidAppear:animated];
+    [self.textView becomeFirstResponder];
+}
+- (void)onCancel { [self dismissViewControllerAnimated:YES completion:nil]; }
+- (void)onFinish {
+    if (self.onFinish) self.onFinish(self.textView.text);
+    [self dismissViewControllerAnimated:YES completion:nil];
+}
+@end
+
+static id PJGetMsgWrap(id cell) {
+    @try {
+        if ([cell respondsToSelector:@selector(getCurrentMessageWrap)]) {
+            id w = [cell performSelector:@selector(getCurrentMessageWrap)];
+            if (w) return w;
+        }
+        id vm = nil;
+        if ([cell respondsToSelector:@selector(viewModel)]) {
+            vm = [cell performSelector:@selector(viewModel)];
+        }
+        if (!vm) vm = [cell valueForKey:@"m_viewModel"];
+        if (vm) {
+            id w = [vm valueForKey:@"m_messageWrap"];
+            if (w) return w;
+        }
+    } @catch(id e){}
+    return nil;
+}
+
+static void JokerShowTextEditor(id msg, UIViewController *host) {
+    if (!msg || !host) return;
+    JokerEditViewController *e = [JokerEditViewController new];
+    e.originalText = GetJokerText(msg) ?: @"";
+    __block id weakMsg = msg;
+    e.onFinish = ^(NSString *t) { SetJokerText(weakMsg, t); };
+    UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:e];
+    [host presentViewController:nav animated:YES completion:nil];
+}
+
+@interface PJMenuItemTarget : NSObject
+@property (nonatomic, weak) id wrap;
+@end
+@implementation PJMenuItemTarget
+- (void)jokerEditAction {
+    UIViewController *host = PJTopmostVC();
+    JokerShowTextEditor(self.wrap, host);
+}
+@end
+
+static id PJMakeJokerMenuItem(id wrap) {
+    Class mmItem = NSClassFromString(@"MMMenuItem");
+    if (!mmItem) return nil;
+    UIImage *icon = [UIImage systemImageNamed:@"theatermasks"];
+    if (!icon) icon = [UIImage systemImageNamed:@"pencil"];
+    PJMenuItemTarget *t = [PJMenuItemTarget new];
+    t.wrap = wrap;
+    SEL initSel = @selector(initWithTitle:icon:target:action:);
+    id obj = [[mmItem alloc] init];
+    NSMethodSignature *sig = [mmItem instanceMethodSignatureForSelector:initSel];
+    if (!sig) return nil;
+    NSInvocation *inv = [NSInvocation invocationWithMethodSignature:sig];
+    [inv setSelector:initSel];
+    [inv setTarget:obj];
+    NSString *title = @"小丑";
+    [inv setArgument:&title atIndex:2];
+    [inv setArgument:&icon atIndex:3];
+    [inv setArgument:&t atIndex:4];
+    SEL action = @selector(jokerEditAction);
+    [inv setArgument:&action atIndex:5];
+    [inv invoke];
+    id result;
+    [inv getReturnValue:&result];
+    return result;
+}
+
 %hook TextMessageCellView
 - (NSArray *)operationMenuItems {
     NSArray *orig = %orig;
+    if (!JokerEnabled()) return orig;
     @try {
-        if (!JokerEnabled()) return orig;
-        Class mmItem = NSClassFromString(@"MMMenuItem");
-        NSMutableString *s = [NSMutableString string];
-        [s appendFormat:@"orig=%lu mmItem=%@\n", (unsigned long)orig.count, mmItem];
-        if (mmItem) {
-            // 列出MMMenuItem的实例方法
-            unsigned int n = 0;
-            Method *ms = class_copyMethodList(mmItem, &n);
-            for (unsigned int i = 0; i < n; i++) {
-                [s appendFormat:@"  %s\n", sel_getName(method_getName(ms[i]))];
-            }
-            free(ms);
-        }
-        [s writeToFile:[NSTemporaryDirectory() stringByAppendingPathComponent:@"pj_menu.txt"] atomically:YES encoding:NSUTF8StringEncoding error:nil];
-    } @catch(id e) {}
-    return orig;
+        id wrap = PJGetMsgWrap(self);
+        if (!wrap) return orig;
+        id item = PJMakeJokerMenuItem(wrap);
+        if (!item) return orig;
+        NSMutableArray *m = [orig mutableCopy] ?: [NSMutableArray array];
+        [m addObject:item];
+        return m;
+    } @catch(id e) { return orig; }
+}
+%end
+
+%hook ImageMessageCellView
+- (NSArray *)operationMenuItems {
+    NSArray *orig = %orig;
+    if (!JokerEnabled()) return orig;
+    @try {
+        id wrap = PJGetMsgWrap(self);
+        if (!wrap) return orig;
+        id item = PJMakeJokerMenuItem(wrap);
+        if (!item) return orig;
+        NSMutableArray *m = [orig mutableCopy] ?: [NSMutableArray array];
+        [m addObject:item];
+        return m;
+    } @catch(id e) { return orig; }
 }
 %end
 
