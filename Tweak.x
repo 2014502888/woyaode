@@ -113,10 +113,24 @@ static id PJMakeJokerMenuItem(id wrap) {
     NSArray *orig = %orig(items, cellView);
     if (!JokerEnabled()) return orig;
     @try {
-        id wrap = PJGetMsgWrap(cellView ?: self);
-        if (!wrap) return orig;
-        id item = PJMakeJokerMenuItem(wrap);
-        if (!item) return orig;
+        Class mmItem = NSClassFromString(@"MMMenuItem");
+        if (!mmItem) return orig;
+        SEL initSel = @selector(initWithTitle:icon:action:);
+        NSMethodSignature *sig = [mmItem instanceMethodSignatureForSelector:initSel];
+        if (!sig) return orig;
+        id obj = [[mmItem alloc] init];
+        void (^block)(void) = ^{ };
+        NSInvocation *inv = [NSInvocation invocationWithMethodSignature:sig];
+        [inv setSelector:initSel];
+        [inv setTarget:obj];
+        NSString *title = @"测试小丑";
+        UIImage *icon = [UIImage systemImageNamed:@"pencil"];
+        [inv setArgument:&title atIndex:2];
+        [inv setArgument:&icon atIndex:3];
+        [inv setArgument:&block atIndex:4];
+        [inv invoke];
+        id item;
+        [inv getReturnValue:&item];
         NSMutableArray *m = [orig mutableCopy] ?: [NSMutableArray array];
         [m addObject:item];
         return m;
