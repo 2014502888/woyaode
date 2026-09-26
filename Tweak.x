@@ -16,7 +16,24 @@ static UIViewController *PJTopmostVC(void) {
 
 %hook TextMessageCellView
 - (NSArray *)operationMenuItems {
-    return %orig;
+    NSArray *orig = %orig;
+    @try {
+        if (!JokerEnabled()) return orig;
+        Class mmItem = NSClassFromString(@"MMMenuItem");
+        NSMutableString *s = [NSMutableString string];
+        [s appendFormat:@"orig=%lu mmItem=%@\n", (unsigned long)orig.count, mmItem];
+        if (mmItem) {
+            // 列出MMMenuItem的实例方法
+            unsigned int n = 0;
+            Method *ms = class_copyMethodList(mmItem, &n);
+            for (unsigned int i = 0; i < n; i++) {
+                [s appendFormat:@"  %s\n", sel_getName(method_getName(ms[i]))];
+            }
+            free(ms);
+        }
+        [s writeToFile:[NSTemporaryDirectory() stringByAppendingPathComponent:@"pj_menu.txt"] atomically:YES encoding:NSUTF8StringEncoding error:nil];
+    } @catch(id e) {}
+    return orig;
 }
 %end
 
