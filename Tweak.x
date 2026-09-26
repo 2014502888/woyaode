@@ -81,7 +81,7 @@ static void PJSetMatchingLabel(UIView *view, NSString *origText, NSString *newTe
     }
     for (UIView *sub in view.subviews) PJSetMatchingLabel(sub, origText, newText);
 }
-static void JokerShowTextEditor(id msg, UIViewController *host) {
+static void JokerShowTextEditor(id msg, id cell, UIViewController *host) {
     if (!msg || !host) return;
     NSString *originalText = [msg valueForKey:@"m_nsContent"];
     if (!originalText) originalText = GetJokerText(msg) ?: @"";
@@ -126,13 +126,14 @@ static void JokerShowTextEditor(id msg, UIViewController *host) {
 }
 @end
 
-static id makeJokerMenuItem(id wrap) {
+static id makeJokerMenuItem(id wrap, id cell) {
     Class mmItem = NSClassFromString(@"MMMenuItem");
     if (!mmItem) return nil;
     UIImage *icon = [UIImage systemImageNamed:@"theatermasks"];
     if (!icon) icon = [UIImage systemImageNamed:@"pencil"];
     JokerTarget *target = [JokerTarget shared];
     target.currentWrap = wrap;
+    target.currentCell = cell;
     SEL sel = @selector(initWithTitle:icon:target:action:);
     id (*msgSend)(id, SEL, NSString*, UIImage*, id, SEL) = (id (*)(id, SEL, NSString*, UIImage*, id, SEL))objc_msgSend;
     id item = msgSend([[mmItem alloc] init], sel, @"改xx", icon, target, @selector(jokerEditAction));
