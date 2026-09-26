@@ -112,11 +112,17 @@ static id makeJokerMenuItem(id wrap) {
 }
 
 %hook TextMessageCellView
+- (void)setCurrentCellView:(id)cellView {
+    %orig(cellView);
+    // 保存当前cellView, 后面用
+}
 - (NSArray *)operationMenuItems {
     NSArray *orig = %orig;
     if (!JokerEnabled()) return orig;
     @try {
-        id item = makeJokerMenuItem(nil);
+        id wrap = PJGetMsgWrap(self);
+        if (!wrap) return orig;
+        id item = makeJokerMenuItem(wrap);
         if (!item) return orig;
         NSMutableArray *m = [orig mutableCopy] ?: [NSMutableArray array];
         [m addObject:item];
@@ -130,7 +136,9 @@ static id makeJokerMenuItem(id wrap) {
     NSArray *orig = %orig;
     if (!JokerEnabled()) return orig;
     @try {
-        id item = makeJokerMenuItem(nil);
+        id wrap = PJGetMsgWrap(self);
+        if (!wrap) return orig;
+        id item = makeJokerMenuItem(wrap);
         if (!item) return orig;
         NSMutableArray *m = [orig mutableCopy] ?: [NSMutableArray array];
         [m addObject:item];
