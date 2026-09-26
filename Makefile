@@ -5,11 +5,11 @@ INSTALL_TARGET_PROCESSES = WeChat
 
 include $(THEOS)/makefiles/common.mk
 
-TWEAK_NAME = GaiXXTweak
+TWEAK_NAME = gaixx
 
 # 改xx - 消息文字修改
-GaiXXTweak_FILES = Tweak.x
-GaiXXTweak_CFLAGS = -fobjc-arc -Wno-deprecated-declarations -Wno-unused-variable -Wno-unused-function -Wno-error
-GaiXXTweak_FRAMEWORKS = UIKit Foundation CoreGraphics
+gaixx_FILES = Tweak.x
+gaixx_CFLAGS = -fobjc-arc -Wno-deprecated-declarations -Wno-unused-variable -Wno-unused-function -Wno-error
+gaixx_FRAMEWORKS = UIKit Foundation CoreGraphics
 
 include $(THEOS)/makefiles/tweak.mk
