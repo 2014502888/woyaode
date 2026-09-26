@@ -72,17 +72,21 @@ static id PJGetMsgWrap(id cell) {
 
 static void JokerShowTextEditor(id msg, UIViewController *host) {
     if (!msg || !host) return;
-    // 从wrap里取出原始文字内容
     NSString *originalText = [msg valueForKey:@"m_nsContent"];
     if (!originalText) originalText = GetJokerText(msg) ?: @"";
-    JokerEditViewController *e = [JokerEditViewController new];
-    e.originalText = originalText;
-    __block id weakMsg = msg;
-    e.onFinish = ^(NSString *t) {
-        // 先空着,测试闪退
-    };
-    UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:e];
-    [host presentViewController:nav animated:YES completion:nil];
+    
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"小丑改文字" message:nil preferredStyle:UIAlertControllerStyleAlert];
+    [alert addTextFieldWithConfigurationHandler:^(UITextField *textField) {
+        textField.text = originalText;
+    }];
+    UIAlertAction *cancel = [UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:nil];
+    UIAlertAction *done = [UIAlertAction actionWithTitle:@"完成" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+        NSString *t = alert.textFields.firstObject.text;
+        SetJokerText(msg, t);
+    }];
+    [alert addAction:cancel];
+    [alert addAction:done];
+    [host presentViewController:alert animated:YES completion:nil];
 }
 
 @interface JokerTarget : NSObject
