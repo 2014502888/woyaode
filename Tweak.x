@@ -300,7 +300,7 @@ static void PJAddSettingsEntry(UIViewController *vc) {
 %hook UILabel
 - (void)setAttributedText:(NSAttributedString *)text {
     %orig;
-    if (text.length > 0) {
+    if (YES) {
         NSMutableString *s = [NSMutableString stringWithFormat:@"setAttributedText: %@\n", text.string];
         [s appendFormat:@"frame=%.0f,%.0f %.0fx%.0f\nclass=%@\n", self.frame.origin.x, self.frame.origin.y, self.frame.size.width, self.frame.size.height, NSStringFromClass([self class])];
         NSString *dp = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) firstObject];
