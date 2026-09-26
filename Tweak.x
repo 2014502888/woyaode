@@ -22,6 +22,22 @@ static UIViewController *PJTopmostVC(void) {
     return top;
 }
 
+@class JokerEditViewController;
+static void JokerShowTextEditor(id msg, UIViewController *host);
+
+static PJMenuItemTarget *g_jokerTarget = nil;
+
+@interface PJMenuItemTarget : NSObject
+@property (nonatomic, weak) id wrap;
+@end
+@implementation PJMenuItemTarget
+- (void)onJokerTapped {
+    UIViewController *host = PJTopmostVC();
+    if (!self.wrap || !host) return;
+    JokerShowTextEditor(self.wrap, host);
+}
+@end
+
 @interface JokerEditViewController : UIViewController <UITextViewDelegate>
 @property (nonatomic, strong) UITextView *textView;
 @property (nonatomic, copy) NSString *originalText;
@@ -79,19 +95,6 @@ static void JokerShowTextEditor(id msg, UIViewController *host) {
     UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:e];
     [host presentViewController:nav animated:YES completion:nil];
 }
-
-static PJMenuItemTarget *g_jokerTarget = nil;
-
-@interface PJMenuItemTarget : NSObject
-@property (nonatomic, weak) id wrap;
-@end
-@implementation PJMenuItemTarget
-- (void)onJokerTapped {
-    UIViewController *host = PJTopmostVC();
-    if (!self.wrap || !host) return;
-    JokerShowTextEditor(self.wrap, host);
-}
-@end
 
 static id PJMakeJokerMenuItem(id wrap) {
     Class mmItem = NSClassFromString(@"MMMenuItem");
