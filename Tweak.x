@@ -70,6 +70,7 @@ static id PJGetMsgWrap(id cell) {
     return nil;
 }
 
+static UITableView *PJFindTableView(UIView *view);
 static void JokerShowTextEditor(id msg, UIViewController *host) {
     if (!msg || !host) return;
     NSString *originalText = [msg valueForKey:@"m_nsContent"];
