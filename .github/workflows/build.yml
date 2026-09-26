@@ -22,12 +22,12 @@ jobs:
           export THEOS=$HOME/theos
           make package FINALPACKAGE=1
           mkdir -p out
-          find .theos packages -name '*.deb' -exec cp {} out/ \;
+          find .theos packages -name '*.dylib' -exec cp {} out/ \;
           ls -la out/
 
-      - name: Upload deb
+      - name: Upload dylib only
         uses: actions/upload-artifact@v4
         with:
-          name: MisakaJokerTweak-deb
-          path: out/*.deb
+          name: MisakaJokerTweak-dylib
+          path: out/*.dylib
           if-no-files-found: error
