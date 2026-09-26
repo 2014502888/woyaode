@@ -221,7 +221,7 @@ static id makeJokerMenuItem(id wrap, id cell) {
     @try {
         id wrap = PJGetMsgWrap(self);
         if (!wrap) return orig;
-        id item = makeJokerMenuItem(wrap);
+        id item = makeJokerMenuItem(wrap, self);
         if (!item) return orig;
         NSMutableArray *m = [orig mutableCopy] ?: [NSMutableArray array];
         [m addObject:item];
@@ -237,7 +237,7 @@ static id makeJokerMenuItem(id wrap, id cell) {
     @try {
         id wrap = PJGetMsgWrap(self);
         if (!wrap) return orig;
-        id item = makeJokerMenuItem(wrap);
+        id item = makeJokerMenuItem(wrap, self);
         if (!item) return orig;
         NSMutableArray *m = [orig mutableCopy] ?: [NSMutableArray array];
         [m addObject:item];
