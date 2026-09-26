@@ -132,23 +132,30 @@ static void JokerShowTextEditor(id msg, id cell, UIViewController *host) {
         @try { [msg setValue:t forKey:@"m_nsBeforeDisplayContent"]; } @catch(id e) {}
         @try { [msg setValue:t forKey:@"m_nsLastDisplayContent"]; } @catch(id e) {}
         dispatch_async(dispatch_get_main_queue(), ^{
+            NSMutableString *log = [NSMutableString stringWithString:@"\n=== DONE ===\n"];
             @try {
-                // 调微信自己的刷新方法
-                @try {
-                    id mgr = [msg valueForKey:@"m_tableViewMgr"];
-                    if (mgr) {
-                        [mgr performSelector:NSSelectorFromString(@"clearDisplayCachesOfWrap:") withObject:msg];
-                        [mgr performSelector:NSSelectorFromString(@"refreshByRecreatingViewModel:wrap:") withObject:nil withObject:msg];
-                    }
-                } @catch(id e) {}
-                // 兜底reload
+                [log appendFormat:@"new text: %@\n", t];
+                [log appendFormat:@"m_nsContent after set: %@\n", [msg valueForKey:@"m_nsContent"]];
+                id mgr = [msg valueForKey:@"m_tableViewMgr"];
+                [log appendFormat:@"m_tableViewMgr: %@\n", mgr ?: @"(nil)"];
+                if (mgr) {
+                    @try { [mgr performSelector:NSSelectorFromString(@"clearDisplayCachesOfWrap:") withObject:msg]; [log appendString:@"clearDisplayCaches OK\n"]; } @catch(id e) { [log appendFormat:@"clearDisplayCaches ERR: %@\n", e]; }
+                    @try { [mgr performSelector:NSSelectorFromString(@"refreshByRecreatingViewModel:wrap:") withObject:nil withObject:msg]; [log appendString:@"refreshByRecreating OK\n"]; } @catch(id e) { [log appendFormat:@"refreshByRecreating ERR: %@\n", e]; }
+                }
                 UITableView *tv = PJFindTableFromView((UIView *)cell);
+                [log appendFormat:@"tableView: %@\n", tv ?: @"(nil)"];
                 if (tv) {
                     NSIndexPath *ip = [tv indexPathForCell:(UITableViewCell *)cell];
+                    [log appendFormat:@"indexPath: %@\n", ip];
                     if (ip) [tv reloadRowsAtIndexPaths:@[ip] withRowAnimation:UITableViewRowAnimationNone];
                     else [tv reloadData];
                 }
-            } @catch(id e) {}
+            } @catch(id e) { [log appendFormat:@"ERR: %@\n", e]; }
+            [log appendString:@"=== END ===\n"];
+            NSFileHandle *fh = [NSFileHandle fileHandleForWritingAtPath:@"/var/mobile/Documents/dump.txt"];
+            if (fh) { [fh seekToEndOfFile]; [fh writeData:[log dataUsingEncoding:NSUTF8StringEncoding]]; [fh closeFile]; }
+            else { [log writeToFile:@"/var/mobile/Documents/dump.txt" atomically:YES encoding:NSUTF8StringEncoding error:nil]; }
+        });
         });
     }];
     [alert addAction:cancel];
