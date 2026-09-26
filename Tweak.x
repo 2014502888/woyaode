@@ -152,9 +152,7 @@ static void JokerShowTextEditor(id msg, id cell, UIViewController *host) {
                 }
             } @catch(id e) { [log appendFormat:@"ERR: %@\n", e]; }
             [log appendString:@"=== END ===\n"];
-            NSFileHandle *fh = [NSFileHandle fileHandleForWritingAtPath:@"/var/mobile/Documents/dump.txt"];
-            if (fh) { [fh seekToEndOfFile]; [fh writeData:[log dataUsingEncoding:NSUTF8StringEncoding]]; [fh closeFile]; }
-            else { [log writeToFile:@"/var/mobile/Documents/dump.txt" atomically:YES encoding:NSUTF8StringEncoding error:nil]; }
+            [log writeToFile:@"/var/mobile/Documents/done_log.txt" atomically:YES encoding:NSUTF8StringEncoding error:nil];
         });
         });
     }];
