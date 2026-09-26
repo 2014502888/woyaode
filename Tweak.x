@@ -83,52 +83,14 @@ static void JokerShowTextEditor(id msg, UIViewController *host) {
     UIAlertAction *done = [UIAlertAction actionWithTitle:@"完成" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
         NSString *t = alert.textFields.firstObject.text;
         SetJokerText(msg, t);
-        // 1. 修改wrap的m_nsContent
+        // 修改wrap的m_nsContent
         [msg setValue:t forKey:@"m_nsContent"];
-        // 2. 找到对应的cell,刷新viewModel
+        // 直接刷新cell
         dispatch_async(dispatch_get_main_queue(), ^{
-            // 遍历所有window,找到聊天页面的tableView
-            UIApplication *app = [UIApplication sharedApplication];
-            for (UIWindow *window in app.windows) {
-                // 递归找tableView
-                NSMutableArray *queue = [NSMutableArray arrayWithObject:window];
-                while ([queue count] > 0) {
-                    UIView *v = [queue objectAtIndex:0];
-                    [queue removeObjectAtIndex:0];
-                    if ([v isKindOfClass:[UITableView class]]) {
-                        UITableView *tv = (UITableView *)v;
-                        // 遍历可见的cell
-                        for (UITableViewCell *cell in [tv visibleCells]) {
-                            // 检查这个cell的wrap是不是我们要改的
-                            id cellWrap = PJGetMsgWrap(cell);
-                            if (cellWrap == msg) {
-                                // 找到了!刷新这个cell的viewModel
-                                @try {
-                                    id oldVM = [cell valueForKey:@"viewModel"];
-                                    if (!oldVM) oldVM = [cell valueForKey:@"m_viewModel"];
-                                    if (oldVM) {
-                                        // 从旧VM取contact和chatContact
-                                        id contact = [oldVM valueForKey:@"m_contact"];
-                                        id chatContact = [oldVM valueForKey:@"m_chatContact"];
-                                        // 创建新VM
-                                        Class vmClass = [oldVM class];
-                                        id newVM = [[vmClass alloc] performSelector:@selector(initWithMessageWrap:contact:chatContact:) withObject:msg withObject:contact withObject:chatContact];
-                                        if (newVM) {
-                                            [cell setValue:newVM forKey:@"m_viewModel"];
-                                            // 调用刷新布局
-                                            [cell setNeedsLayout];
-                                        }
-                                    }
-                                } @catch(id e) {}
-                                break;
-                            }
-                        }
-                    }
-                    NSArray *subs = [v subviews];
-                    for (NSInteger i = 0; i < [subs count]; i++) {
-                        [queue addObject:[subs objectAtIndex:i]];
-                    }
-                }
+            id cell = [JokerTarget shared].currentCell;
+            if (cell) {
+                [cell setNeedsLayout];
+                [cell layoutIfNeeded];
             }
         });
     }];
@@ -139,6 +101,7 @@ static void JokerShowTextEditor(id msg, UIViewController *host) {
 
 @interface JokerTarget : NSObject
 @property (nonatomic, weak) id currentWrap;
+@property (nonatomic, weak) id currentCell;
 + (instancetype)shared;
 @end
 @implementation JokerTarget
@@ -157,13 +120,14 @@ static void JokerShowTextEditor(id msg, UIViewController *host) {
 }
 @end
 
-static id makeJokerMenuItem(id wrap) {
+static id makeJokerMenuItem(id wrap, id cell) {
     Class mmItem = NSClassFromString(@"MMMenuItem");
     if (!mmItem) return nil;
     UIImage *icon = [UIImage systemImageNamed:@"theatermasks"];
     if (!icon) icon = [UIImage systemImageNamed:@"pencil"];
     JokerTarget *target = [JokerTarget shared];
     target.currentWrap = wrap;
+    target.currentCell = cell;
     SEL sel = @selector(initWithTitle:icon:target:action:);
     id (*msgSend)(id, SEL, NSString*, UIImage*, id, SEL) = (id (*)(id, SEL, NSString*, UIImage*, id, SEL))objc_msgSend;
     id item = msgSend([[mmItem alloc] init], sel, @"改xx", icon, target, @selector(jokerEditAction));
@@ -217,7 +181,7 @@ static id makeJokerMenuItem(id wrap) {
     @try {
         id wrap = PJGetMsgWrap(self);
         if (!wrap) return orig;
-        id item = makeJokerMenuItem(wrap);
+        id item = makeJokerMenuItem(wrap, self);
         if (!item) return orig;
         NSMutableArray *m = [orig mutableCopy] ?: [NSMutableArray array];
         [m addObject:item];
@@ -233,7 +197,7 @@ static id makeJokerMenuItem(id wrap) {
     @try {
         id wrap = PJGetMsgWrap(self);
         if (!wrap) return orig;
-        id item = makeJokerMenuItem(wrap);
+        id item = makeJokerMenuItem(wrap, self);
         if (!item) return orig;
         NSMutableArray *m = [orig mutableCopy] ?: [NSMutableArray array];
         [m addObject:item];
