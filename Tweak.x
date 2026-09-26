@@ -70,49 +70,16 @@ static id PJGetMsgWrap(id cell) {
     return nil;
 }
 
-static UITableView *PJFindTableView(UIView *view);
-static UITableView *PJFindTableFromView(UIView *v) {
-    while (v) {
-        if ([v isKindOfClass:[UITableView class]]) return (UITableView *)v;
-        v = v.superview;
-    }
-    return nil;
-}
-static void PJSetMatchingLabel(UIView *view, NSString *origText, NSString *newText) {
-    if ([view isKindOfClass:[UILabel class]]) {
-        UILabel *l = (UILabel *)view;
-        if ([l.text isEqualToString:origText] || (GetJokerText(view) && [l.text isEqualToString:GetJokerText(view)])) {
-            l.text = newText;
-        }
-        return;
-    }
-    for (UIView *sub in view.subviews) PJSetMatchingLabel(sub, origText, newText);
-}
-static void DumpView(UIView *view, NSString *indent, NSMutableString *out) {
-    if (!view) return;
-    [out appendFormat:@"%@[%@] %.0f,%.0f %.0fx%.0f", indent, NSStringFromClass([view class]), view.frame.origin.x, view.frame.origin.y, view.frame.size.width, view.frame.size.height];
-    if ([view isKindOfClass:[UILabel class]]) { UILabel *l = (UILabel *)view; [out appendFormat:@" txt=\"%@\"", l.text]; }
-    [out appendString:@"\n"];
-    for (UIView *sub in view.subviews) DumpView(sub, [indent stringByAppendingString:@"  "], out);
-}
-
-static void JokerShowTextEditor(id msg, id cell, UIViewController *host) {
+static void JokerShowTextEditor(id msg, UIViewController *host) {
     if (!msg || !host) return;
     // === DUMP ===
-    NSMutableString *dump = [NSMutableString stringWithFormat:@"cell class: %@\n", NSStringFromClass([cell class])];
-    @try {
-        unsigned int pc; objc_property_t *pp = class_copyPropertyList([cell class], &pc);
-        for (unsigned int k = 0; k < pc; k++) { [dump appendFormat:@"  prop %s\n", property_getName(pp[k]); }
-        free(pp);
-    } @catch(id e) {}
-    [dump appendString:@"--- subviews ---\n"];
-    if ([cell isKindOfClass:[UIView class]]) DumpView((UIView*)cell, @"", dump);
-    [dump appendFormat:@"--- msg: %@\n", NSStringFromClass([msg class])];
+    NSMutableString *dump = [NSMutableString string];
+    [dump appendFormat:@"msg class: %@\n", NSStringFromClass([msg class])];
     @try {
         unsigned int mc; objc_property_t *mp = class_copyPropertyList([msg class], &mc);
-        for (unsigned int k = 0; k < mc; k++) {
-            NSString *key = [NSString stringWithUTF8String:property_getName(mp[k])];
-            @try { [dump appendFormat:@"  %@ = %@\n", key, [msg valueForKey:key] ?: @"(nil)"]; } @catch(id e) {}
+        for (unsigned int i = 0; i < mc; i++) {
+            NSString *k = [NSString stringWithUTF8String:property_getName(mp[i])];
+            @try { [dump appendFormat:@"  %@ = %@\n", k, [msg valueForKey:k] ?: @"(nil)"]; } @catch(id e) {}
         }
         free(mp);
     } @catch(id e) {}
@@ -128,31 +95,11 @@ static void JokerShowTextEditor(id msg, id cell, UIViewController *host) {
     UIAlertAction *done = [UIAlertAction actionWithTitle:@"完成" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
         NSString *t = alert.textFields.firstObject.text;
         SetJokerText(msg, t);
+        // 直接修改wrap的m_nsContent
         [msg setValue:t forKey:@"m_nsContent"];
-        @try { [msg setValue:t forKey:@"m_nsBeforeDisplayContent"]; } @catch(id e) {}
-        @try { [msg setValue:t forKey:@"m_nsLastDisplayContent"]; } @catch(id e) {}
+        // 找到对应的cell,刷新一下
         dispatch_async(dispatch_get_main_queue(), ^{
-            NSMutableString *log = [NSMutableString stringWithString:@"\n=== DONE ===\n"];
-            @try {
-                [log appendFormat:@"new text: %@\n", t];
-                [log appendFormat:@"m_nsContent after set: %@\n", [msg valueForKey:@"m_nsContent"]];
-                id mgr = [msg valueForKey:@"m_tableViewMgr"];
-                [log appendFormat:@"m_tableViewMgr: %@\n", mgr ?: @"(nil)"];
-                if (mgr) {
-                    @try { [mgr performSelector:NSSelectorFromString(@"clearDisplayCachesOfWrap:") withObject:msg]; [log appendString:@"clearDisplayCaches OK\n"]; } @catch(id e) { [log appendFormat:@"clearDisplayCaches ERR: %@\n", e]; }
-                    @try { [mgr performSelector:NSSelectorFromString(@"refreshByRecreatingViewModel:wrap:") withObject:nil withObject:msg]; [log appendString:@"refreshByRecreating OK\n"]; } @catch(id e) { [log appendFormat:@"refreshByRecreating ERR: %@\n", e]; }
-                }
-                UITableView *tv = PJFindTableFromView((UIView *)cell);
-                [log appendFormat:@"tableView: %@\n", tv ?: @"(nil)"];
-                if (tv) {
-                    NSIndexPath *ip = [tv indexPathForCell:(UITableViewCell *)cell];
-                    [log appendFormat:@"indexPath: %@\n", ip];
-                    if (ip) [tv reloadRowsAtIndexPaths:@[ip] withRowAnimation:UITableViewRowAnimationNone];
-                    else [tv reloadData];
-                }
-            } @catch(id e) { [log appendFormat:@"ERR: %@\n", e]; }
-            [log appendString:@"=== END ===\n"];
-            [log writeToFile:@"/var/mobile/Documents/done_log.txt" atomically:YES encoding:NSUTF8StringEncoding error:nil];
+            [[NSNotificationCenter defaultCenter] postNotificationName:@"JokerTextChanged" object:nil];
         });
     }];
     [alert addAction:cancel];
@@ -175,19 +122,18 @@ static void JokerShowTextEditor(id msg, id cell, UIViewController *host) {
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
         UIViewController *host = PJTopmostVC();
         if (!self.currentWrap || !host) return;
-        JokerShowTextEditor(self.currentWrap, self.currentCell, host);
+        JokerShowTextEditor(self.currentWrap, host);
     });
 }
 @end
 
-static id makeJokerMenuItem(id wrap, id cell) {
+static id makeJokerMenuItem(id wrap) {
     Class mmItem = NSClassFromString(@"MMMenuItem");
     if (!mmItem) return nil;
     UIImage *icon = [UIImage systemImageNamed:@"theatermasks"];
     if (!icon) icon = [UIImage systemImageNamed:@"pencil"];
     JokerTarget *target = [JokerTarget shared];
     target.currentWrap = wrap;
-    target.currentCell = cell;
     SEL sel = @selector(initWithTitle:icon:target:action:);
     id (*msgSend)(id, SEL, NSString*, UIImage*, id, SEL) = (id (*)(id, SEL, NSString*, UIImage*, id, SEL))objc_msgSend;
     id item = msgSend([[mmItem alloc] init], sel, @"改xx", icon, target, @selector(jokerEditAction));
@@ -221,7 +167,7 @@ static id makeJokerMenuItem(id wrap, id cell) {
     @try {
         id wrap = PJGetMsgWrap(self);
         if (!wrap) return orig;
-        id item = makeJokerMenuItem(wrap, self);
+        id item = makeJokerMenuItem(wrap);
         if (!item) return orig;
         NSMutableArray *m = [orig mutableCopy] ?: [NSMutableArray array];
         [m addObject:item];
@@ -237,7 +183,7 @@ static id makeJokerMenuItem(id wrap, id cell) {
     @try {
         id wrap = PJGetMsgWrap(self);
         if (!wrap) return orig;
-        id item = makeJokerMenuItem(wrap, self);
+        id item = makeJokerMenuItem(wrap);
         if (!item) return orig;
         NSMutableArray *m = [orig mutableCopy] ?: [NSMutableArray array];
         [m addObject:item];
