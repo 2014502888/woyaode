@@ -138,14 +138,32 @@ static id makeJokerMenuItem(id wrap) {
         NSString *replacement = GetJokerText(wrap);
         if (!replacement) return;
         UIView *selfView = (UIView *)self;
-        NSArray *subs = [selfView subviews];
-        for (NSInteger i = 0; i < [subs count]; i++) {
-            UIView *sub = [subs objectAtIndex:i];
-            if ([sub isKindOfClass:[UILabel class]]) {
-                UILabel *textLabel = (UILabel *)sub;
-                textLabel.text = replacement;
-                break;
+        // 递归找所有UILabel
+        NSMutableArray *allLabels = [NSMutableArray array];
+        NSMutableArray *queue = [NSMutableArray arrayWithObject:selfView];
+        while ([queue count] > 0) {
+            UIView *v = [queue objectAtIndex:0];
+            [queue removeObjectAtIndex:0];
+            if ([v isKindOfClass:[UILabel class]]) {
+                [allLabels addObject:v];
             }
+            NSArray *subs = [v subviews];
+            for (NSInteger i = 0; i < [subs count]; i++) {
+                [queue addObject:[subs objectAtIndex:i]];
+            }
+        }
+        // 找宽度最大的那个label,就是消息内容
+        UILabel *best = nil;
+        CGFloat bestWidth = 0;
+        for (NSInteger i = 0; i < [allLabels count]; i++) {
+            UILabel *l = [allLabels objectAtIndex:i];
+            if (CGRectGetWidth(l.frame) > bestWidth) {
+                bestWidth = CGRectGetWidth(l.frame);
+                best = l;
+            }
+        }
+        if (best) {
+            best.text = replacement;
         }
     } @catch(id e) {}
 }
