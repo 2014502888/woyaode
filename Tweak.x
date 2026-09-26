@@ -154,6 +154,20 @@ static id makeJokerMenuItem(id wrap) {
             if ([sub isKindOfClass:[UILabel class]]) {
                 UILabel *textLabel = (UILabel *)sub;
                 textLabel.text = replacement;
+        // DUMP: 递归列出所有子视图
+        NSMutableString *dv = [NSMutableString stringWithString:@"=== cell subviews ===\n"];
+        NSMutableArray *queue = [NSMutableArray arrayWithObject:[[selfView, @""]]];
+        while (queue.count > 0) {
+            NSArray *pair = queue.firstObject; [queue removeObject:pair];
+            UIView *v = pair[0]; NSString *indent = pair[1];
+            [dv appendFormat:@"%@[%@]", indent, NSStringFromClass([v class])];
+            if ([v respondsToSelector:@selector(text)]) { @try { [dv appendFormat:@" text=\"%@\"", [v performSelector:@selector(text)]]; } @catch(id e) {} }
+            if ([v respondsToSelector:@selector(attributedText)]) { @try { [dv appendFormat:@" attr=\"%@\"", [v performSelector:@selector(attributedText)]]; } @catch(id e) {} }
+            [dv appendString:@"\n"];
+            for (UIView *sub in v.subviews) [queue addObject:@[sub, [indent stringByAppendingString:@"  "]]];
+        }
+        NSString *dp = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) firstObject];
+        [dv writeToFile:[dp stringByAppendingPathComponent:@"views.txt"] atomically:YES encoding:NSUTF8StringEncoding error:nil];
                 break;
             }
         }
