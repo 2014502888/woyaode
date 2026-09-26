@@ -93,6 +93,8 @@ static void JokerShowTextEditor(id msg, UIViewController *host) {
 }
 - (void)jokerEditAction {
     UIViewController *host = PJTopmostVC();
+    UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"调试" message:[NSString stringWithFormat:@"wrap=%@ host=%@", self.currentWrap, host] delegate:nil cancelButtonTitle:@"确定" otherButtonTitles:nil];
+    [alert show];
     if (!self.currentWrap || !host) return;
     JokerShowTextEditor(self.currentWrap, host);
 }
