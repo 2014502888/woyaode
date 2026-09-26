@@ -92,8 +92,8 @@ static void JokerShowTextEditor(id msg, UIViewController *host) {
     return s;
 }
 - (void)jokerEditAction {
-    dispatch_async(dispatch_get_main_queue(), ^{
-        UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"调试" message:[NSString stringWithFormat:@"wrap=%@ host=%@", self.currentWrap, [UIApplication sharedApplication].keyWindow.rootViewController] delegate:nil cancelButtonTitle:@"确定" otherButtonTitles:nil];
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"调试" message:[NSString stringWithFormat:@"wrap=%@", self.currentWrap] delegate:nil cancelButtonTitle:@"确定" otherButtonTitles:nil];
         [alert show];
     });
 }
