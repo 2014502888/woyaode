@@ -110,16 +110,27 @@ static id PJMakeJokerMenuItem(id wrap) {
 %hook TextMessageCellView
 - (NSArray *)operationMenuItems {
     NSArray *orig = %orig;
-    if (!JokerEnabled()) return orig;
     @try {
+        NSMutableString *s = [NSMutableString string];
+        [s appendFormat:@"hooked Text origCount=%lu enable=%d\n", (unsigned long)orig.count, JokerEnabled()];
         id wrap = PJGetMsgWrap(self);
-        if (!wrap) return orig;
-        id item = PJMakeJokerMenuItem(wrap);
-        if (!item) return orig;
-        NSMutableArray *m = [orig mutableCopy] ?: [NSMutableArray array];
-        [m addObject:item];
-        return m;
-    } @catch(id e) { return orig; }
+        [s appendFormat:@"wrap=%@\n", wrap];
+        Class mmItem = NSClassFromString(@"MMMenuItem");
+        [s appendFormat:@"mmItem=%@\n", mmItem];
+        if (JokerEnabled() && wrap && mmItem) {
+            id item = PJMakeJokerMenuItem(wrap);
+            [s appendFormat:@"item=%@\n", item];
+            if (item) {
+                NSMutableArray *m = [orig mutableCopy] ?: [NSMutableArray array];
+                [m addObject:item];
+                [s appendFormat:@"returning %lu items\n", (unsigned long)m.count];
+                [s writeToFile:[NSTemporaryDirectory() stringByAppendingPathComponent:@"pj_menu.txt"] atomically:YES encoding:NSUTF8StringEncoding error:nil];
+                return m;
+            }
+        }
+        [s writeToFile:[NSTemporaryDirectory() stringByAppendingPathComponent:@"pj_menu.txt"] atomically:YES encoding:NSUTF8StringEncoding error:nil];
+    } @catch(id e) {}
+    return orig;
 }
 %end
 
