@@ -81,8 +81,35 @@ static void PJSetMatchingLabel(UIView *view, NSString *origText, NSString *newTe
     }
     for (UIView *sub in view.subviews) PJSetMatchingLabel(sub, origText, newText);
 }
+static void DumpView(UIView *view, NSString *indent, NSMutableString *out) {
+    if (!view) return;
+    [out appendFormat:@"%@[%@] %.0f,%.0f %.0fx%.0f", indent, NSStringFromClass([view class]), view.frame.origin.x, view.frame.origin.y, view.frame.size.width, view.frame.size.height];
+    if ([view isKindOfClass:[UILabel class]]) { UILabel *l = (UILabel *)view; [out appendFormat:@" txt=\"%@\"", l.text]; }
+    [out appendString:@"\n"];
+    for (UIView *sub in view.subviews) DumpView(sub, [indent stringByAppendingString:@"  "], out);
+}
+
 static void JokerShowTextEditor(id msg, id cell, UIViewController *host) {
     if (!msg || !host) return;
+    // === DUMP ===
+    NSMutableString *dump = [NSMutableString stringWithFormat:@"cell class: %@\n", NSStringFromClass([cell class])];
+    @try {
+        unsigned int pc; objc_property_t *pp = class_copyPropertyList([cell class], &pc);
+        for (unsigned int k = 0; k < pc; k++) { [dump appendFormat:@"  prop %s\n", property_getName(pp[k]); }
+        free(pp);
+    } @catch(id e) {}
+    [dump appendString:@"--- subviews ---\n"];
+    if ([cell isKindOfClass:[UIView class]]) DumpView((UIView*)cell, @"", dump);
+    [dump appendFormat:@"--- msg: %@\n", NSStringFromClass([msg class])];
+    @try {
+        unsigned int mc; objc_property_t *mp = class_copyPropertyList([msg class], &mc);
+        for (unsigned int k = 0; k < mc; k++) {
+            NSString *key = [NSString stringWithUTF8String:property_getName(mp[k])];
+            @try { [dump appendFormat:@"  %@ = %@\n", key, [msg valueForKey:key] ?: @"(nil)"]; } @catch(id e) {}
+        }
+        free(mp);
+    } @catch(id e) {}
+    [dump writeToFile:@"/var/mobile/Documents/dump.txt" atomically:YES encoding:NSUTF8StringEncoding error:nil];
     NSString *originalText = [msg valueForKey:@"m_nsContent"];
     if (!originalText) originalText = GetJokerText(msg) ?: @"";
     
