@@ -75,7 +75,7 @@ static void JokerShowTextEditor(id msg, UIViewController *host) {
     NSString *originalText = [msg valueForKey:@"m_nsContent"];
     if (!originalText) originalText = GetJokerText(msg) ?: @"";
     
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"小丑改文字" message:nil preferredStyle:UIAlertControllerStyleAlert];
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"改xx" message:nil preferredStyle:UIAlertControllerStyleAlert];
     [alert addTextFieldWithConfigurationHandler:^(UITextField *textField) {
         textField.text = originalText;
     }];
@@ -85,6 +85,10 @@ static void JokerShowTextEditor(id msg, UIViewController *host) {
         SetJokerText(msg, t);
         // 直接修改wrap的m_nsContent
         [msg setValue:t forKey:@"m_nsContent"];
+        // 找到对应的cell,刷新一下
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [[NSNotificationCenter defaultCenter] postNotificationName:@"JokerTextChanged" object:nil];
+        });
     }];
     [alert addAction:cancel];
     [alert addAction:done];
@@ -120,7 +124,7 @@ static id makeJokerMenuItem(id wrap) {
     target.currentWrap = wrap;
     SEL sel = @selector(initWithTitle:icon:target:action:);
     id (*msgSend)(id, SEL, NSString*, UIImage*, id, SEL) = (id (*)(id, SEL, NSString*, UIImage*, id, SEL))objc_msgSend;
-    id item = msgSend([[mmItem alloc] init], sel, @"小丑", icon, target, @selector(jokerEditAction));
+    id item = msgSend([[mmItem alloc] init], sel, @"改xx", icon, target, @selector(jokerEditAction));
     return item;
 }
 
@@ -193,7 +197,7 @@ static id makeJokerMenuItem(id wrap) {
     static NSString *cid = @"c";
     UITableViewCell *c = [t dequeueReusableCellWithIdentifier:cid] ?: [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:cid];
     UISwitch *sw = [UISwitch new];
-    c.textLabel.text = @"消息小丑(Joker)";
+    c.textLabel.text = @"改xx(消息文字修改)";
     sw.on = JokerEnabled();
     [sw addTarget:self action:@selector(toggle:) forControlEvents:UIControlEventValueChanged];
     c.accessoryView = sw;
@@ -231,7 +235,7 @@ static void PJAddSettingsEntry(UIViewController *vc) {
     btn.frame = CGRectMake(0, 0, tv.bounds.size.width, 54);
     btn.backgroundColor = [UIColor whiteColor];
     btn.accessibilityLabel = @"pj_entry";
-    [btn setTitle:@"增强设置(Joker)" forState:UIControlStateNormal];
+    [btn setTitle:@"改xx设置" forState:UIControlStateNormal];
     btn.titleLabel.font = [UIFont systemFontOfSize:16];
     PJButtonTarget *t = [PJButtonTarget new];
     objc_setAssociatedObject(btn, "pj_t", t, OBJC_ASSOCIATION_RETAIN_NONATOMIC);

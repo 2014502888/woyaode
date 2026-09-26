@@ -5,11 +5,11 @@ INSTALL_TARGET_PROCESSES = WeChat
 
 include $(THEOS)/makefiles/common.mk
 
-TWEAK_NAME = MisakaJokerTweak
+TWEAK_NAME = GaiXXTweak
 
-# 反推自 2.dylib: Misaka(会话分组) + Joker(消息小丑恶搞)
-MisakaJokerTweak_FILES = Tweak.x
-MisakaJokerTweak_CFLAGS = -fobjc-arc -Wno-deprecated-declarations -Wno-unused-variable -Wno-unused-function -Wno-error
-MisakaJokerTweak_FRAMEWORKS = UIKit Foundation CoreGraphics
+# 改xx - 消息文字修改
+GaiXXTweak_FILES = Tweak.x
+GaiXXTweak_CFLAGS = -fobjc-arc -Wno-deprecated-declarations -Wno-unused-variable -Wno-unused-function -Wno-error
+GaiXXTweak_FRAMEWORKS = UIKit Foundation CoreGraphics
 
 include $(THEOS)/makefiles/tweak.mk

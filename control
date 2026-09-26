@@ -1,5 +1,5 @@
-Package: com.misakajoker.tweak
-Name: MisakaJokerTweak
+Package: com.gaixx.tweak
+Name: GaiXXTweak
 Version: 0.0.1
 Architecture: iphoneos-arm64
-Description: Misaka(会话分组) + Joker(消息小丑恶搞) 反推实现
+Description: 改xx - 消息文字修改工具
