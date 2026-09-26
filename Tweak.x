@@ -3,12 +3,6 @@
 #import <objc/runtime.h>
 #import <substrate.h>
 
-// ============================================================
-//  Joker tweak (照 Joker.dylib 反推)
-//  hook TextMessageCellView / ImageMessageCellView 的 operationMenuItems,
-//  往微信原生菜单里加一个"小丑"项。
-// ============================================================
-
 static BOOL JokerEnabled(void) {
     return [[NSUserDefaults standardUserDefaults] boolForKey:@"JokerTextEnabled"] ||
            [[NSUserDefaults standardUserDefaults] boolForKey:@"pjMessageJokerEnable"];
@@ -77,6 +71,42 @@ static void JokerShowTextEditor(id msg, UIViewController *host) {
     [host presentViewController:nav animated:YES completion:nil];
 }
 
+@interface PJMenuItemTarget : NSObject
+@property (nonatomic, weak) id wrap;
+@end
+@implementation PJMenuItemTarget
+- (void)jokerEditAction {
+    UIViewController *host = PJTopmostVC();
+    JokerShowTextEditor(self.wrap, host);
+}
+@end
+
+static id PJMakeJokerMenuItem(id wrap) {
+    Class mmItem = NSClassFromString(@"MMMenuItem");
+    if (!mmItem) return nil;
+    UIImage *img = [UIImage systemImageNamed:@"theatermasks"];
+    if (!img) img = [UIImage systemImageNamed:@"pencil"];
+    PJMenuItemTarget *t = [PJMenuItemTarget new];
+    t.wrap = wrap;
+    id obj = [[mmItem alloc] init];
+    SEL action = @selector(jokerEditAction);
+    SEL initSel = @selector(initWithTitle:image:target:action:);
+    NSMethodSignature *sig = [mmItem instanceMethodSignatureForSelector:initSel];
+    if (!sig) return nil;
+    NSInvocation *inv = [NSInvocation invocationWithMethodSignature:sig];
+    [inv setSelector:initSel];
+    [inv setTarget:obj];
+    NSString *title = @"小丑";
+    [inv setArgument:&title atIndex:2];
+    [inv setArgument:&img atIndex:3];
+    [inv setArgument:&t atIndex:4];
+    [inv setArgument:&action atIndex:5];
+    [inv invoke];
+    id result;
+    [inv getReturnValue:&result];
+    return result;
+}
+
 %hook TextMessageCellView
 - (NSArray *)operationMenuItems {
     NSArray *orig = %orig;
@@ -84,17 +114,8 @@ static void JokerShowTextEditor(id msg, UIViewController *host) {
     @try {
         id wrap = PJGetMsgWrap(self);
         if (!wrap) return orig;
-        Class mmItem = NSClassFromString(@"MMMenuItem");
-        if (!mmItem) return orig;
-        id item = [[mmItem alloc] init];
-        if ([item respondsToSelector:@selector(setTitle:)]) {
-            [item performSelector:@selector(setTitle:) withObject:@"小丑"];
-        }
-        UIViewController *host = PJTopmostVC();
-        void (^blk)(void) = ^{ JokerShowTextEditor(wrap, host); };
-        if ([item respondsToSelector:@selector(setActionBlock:)]) {
-            [item performSelector:@selector(setActionBlock:) withObject:blk];
-        }
+        id item = PJMakeJokerMenuItem(wrap);
+        if (!item) return orig;
         NSMutableArray *m = [orig mutableCopy] ?: [NSMutableArray array];
         [m addObject:item];
         return m;
@@ -109,20 +130,8 @@ static void JokerShowTextEditor(id msg, UIViewController *host) {
     @try {
         id wrap = PJGetMsgWrap(self);
         if (!wrap) return orig;
-        Class mmItem = NSClassFromString(@"MMMenuItem");
-        if (!mmItem) return orig;
-        id item = [[mmItem alloc] init];
-        if ([item respondsToSelector:@selector(setTitle:)]) {
-            [item performSelector:@selector(setTitle:) withObject:@"小丑"];
-        }
-        UIViewController *host = PJTopmostVC();
-        void (^blk)(void) = ^{
-            UIImagePickerController *p = [UIImagePickerController new];
-            [host presentViewController:p animated:YES completion:nil];
-        };
-        if ([item respondsToSelector:@selector(setActionBlock:)]) {
-            [item performSelector:@selector(setActionBlock:) withObject:blk];
-        }
+        id item = PJMakeJokerMenuItem(wrap);
+        if (!item) return orig;
         NSMutableArray *m = [orig mutableCopy] ?: [NSMutableArray array];
         [m addObject:item];
         return m;
@@ -166,6 +175,7 @@ static UITableView *PJFindTableView(UIView *view) {
     }
     return nil;
 }
+
 @interface PJButtonTarget : NSObject
 @end
 @implementation PJButtonTarget
