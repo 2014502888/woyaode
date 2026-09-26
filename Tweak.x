@@ -131,6 +131,13 @@ static id makeJokerMenuItem(id wrap) {
         if (!wrap) return;
         NSString *replacement = GetJokerText(wrap);
         if (!replacement) return;
+        UILabel *textLabel = nil;
+        for (UIView *sub in self.subviews) {
+            if ([sub isKindOfClass:[UILabel class]]) {
+                textLabel = (UILabel *)sub;
+                break;
+            }
+        }
     } @catch(id e) {}
 }
 - (NSArray *)operationMenuItems {
