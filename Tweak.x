@@ -109,18 +109,16 @@ static id PJMakeJokerMenuItem(id wrap) {
 }
 
 %hook TextMessageCellView
-- (NSArray *)injectedMenuItems:(NSArray *)items forCellView:(id)cellView {
-    NSArray *orig = %orig(items, cellView);
-    if (!JokerEnabled()) return orig;
-    @try {
-        id wrap = PJGetMsgWrap(cellView ?: self);
-        if (!wrap) return orig;
-        id item = PJMakeJokerMenuItem(wrap);
-        if (!item) return orig;
-        NSMutableArray *m = [orig mutableCopy] ?: [NSMutableArray array];
-        [m addObject:item];
-        return m;
-    } @catch(id e) { return orig; }
+- (void)layoutSubviews {
+    %orig;
+    static BOOL showed = NO;
+    if (!showed && JokerEnabled()) {
+        showed = YES;
+        dispatch_async(dispatch_get_main_queue(), ^{
+            UIAlertView *a = [[UIAlertView alloc] initWithTitle:@"测试" message:@"TextMessageCellView hook生效了" delegate:nil cancelButtonTitle:@"确定" otherButtonTitles:nil];
+            [a show];
+        });
+    }
 }
 %end
 
