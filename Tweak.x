@@ -14,6 +14,12 @@ static UIViewController *PJTopmostVC(void) {
     return top;
 }
 
+%hook TextMessageCellView
+- (NSArray *)operationMenuItems {
+    return %orig;
+}
+%end
+
 @interface PJSettingsViewController : UIViewController <UITableViewDataSource, UITableViewDelegate>
 @end
 @implementation PJSettingsViewController
