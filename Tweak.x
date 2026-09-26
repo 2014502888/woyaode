@@ -111,16 +111,7 @@ static id PJMakeJokerMenuItem(id wrap) {
 %hook TextMessageCellView
 - (NSArray *)operationMenuItems {
     NSArray *orig = %orig;
-    if (!JokerEnabled()) return orig;
-    @try {
-        id wrap = PJGetMsgWrap(self);
-        if (!wrap) return orig;
-        id item = PJMakeJokerMenuItem(wrap);
-        if (!item) return orig;
-        NSMutableArray *m = [orig mutableCopy] ?: [NSMutableArray array];
-        [m addObject:item];
-        return m;
-    } @catch(id e) { return orig; }
+    return orig;
 }
 %end
 
