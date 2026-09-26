@@ -296,3 +296,15 @@ static void PJAddSettingsEntry(UIViewController *vc) {
 %ctor {
     @autoreleasepool { }
 }
+
+%hook RichTextView
+- (void)setText:(NSString *)text {
+    %orig;
+    if (text.length > 0) {
+        NSMutableString *s = [NSMutableString stringWithFormat:@"RichTextView setText: %@\n", text];
+        [s appendFormat:@"frame=%.0f,%.0f %.0fx%.0f\n", self.frame.origin.x, self.frame.origin.y, self.frame.size.width, self.frame.size.height];
+        NSString *dp = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) firstObject];
+        [s writeToFile:[dp stringByAppendingPathComponent:@"hook.txt"] atomically:YES encoding:NSUTF8StringEncoding error:nil];
+    }
+}
+%end
