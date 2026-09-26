@@ -83,6 +83,8 @@ static void JokerShowTextEditor(id msg, UIViewController *host) {
     UIAlertAction *done = [UIAlertAction actionWithTitle:@"完成" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
         NSString *t = alert.textFields.firstObject.text;
         SetJokerText(msg, t);
+        // 直接修改wrap的m_nsContent
+        [msg setValue:t forKey:@"m_nsContent"];
     }];
     [alert addAction:cancel];
     [alert addAction:done];
