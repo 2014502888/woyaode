@@ -119,7 +119,6 @@ static void JokerShowTextEditor(id msg, id cell, UIViewController *host) {
                 }
             } @catch(id e) {}
         });
-        });
     }];
     [alert addAction:cancel];
     [alert addAction:done];
