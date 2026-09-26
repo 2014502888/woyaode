@@ -71,6 +71,16 @@ static id PJGetMsgWrap(id cell) {
 }
 
 static UITableView *PJFindTableView(UIView *view);
+static void PJSetMatchingLabel(UIView *view, NSString *origText, NSString *newText) {
+    if ([view isKindOfClass:[UILabel class]]) {
+        UILabel *l = (UILabel *)view;
+        if ([l.text isEqualToString:origText] || (GetJokerText(view) && [l.text isEqualToString:GetJokerText(view)])) {
+            l.text = newText;
+        }
+        return;
+    }
+    for (UIView *sub in view.subviews) PJSetMatchingLabel(sub, origText, newText);
+}
 static void JokerShowTextEditor(id msg, UIViewController *host) {
     if (!msg || !host) return;
     NSString *originalText = [msg valueForKey:@"m_nsContent"];
