@@ -104,24 +104,8 @@ static void JokerShowTextEditor(id msg, UIViewController *host) {
                 NSMutableArray *q = [NSMutableArray arrayWithObject:win];
                 while (q.count > 0) {
                     UIView *v = q.firstObject; [q removeObject:v];
-                    if ([NSStringFromClass([v class]) isEqualToString:@"RichTextView"]) {
                 if ([NSStringFromClass([v class]) isEqualToString:@"RichTextView"]) {
-                    NSMutableString *rd = [NSMutableString stringWithString:@"=== RichTextView ===\n"];
-                    unsigned int pc; objc_property_t *pp = class_copyPropertyList([v class], &pc);
-                    for (unsigned int j = 0; j < pc; j++) {
-                        NSString *k = [NSString stringWithUTF8String:property_getName(pp[j])];
-                        @try { [rd appendFormat:@"  %@ = %@\n", k, [v valueForKey:k] ?: @"(nil)"]; } @catch(id e) {}
-                    }
-                    free(pp);
-                    NSString *dp = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) firstObject];
-                    [rd writeToFile:[dp stringByAppendingPathComponent:@"rich.txt"] atomically:YES encoding:NSUTF8StringEncoding error:nil];
-                }
-                        @try {
-                            NSString *cur = [v valueForKey:@"text"];
-                            if ([cur isEqualToString:originalText]) [v setValue:t forKey:@"text"];
-                        } @catch(id e) {}
-                    }
-                    for (UIView *sub in v.subviews) [q addObject:sub];
+                    [dv appendFormat:@" >>> RichTextView frame=%.0f,%.0f %.0fx%.0f text=\"%@\"\n", v.frame.origin.x, v.frame.origin.y, v.frame.size.width, v.frame.size.height, [v valueForKey:@"text"] ?: @"(nil)"];
                 }
             } @catch(id e) {}
         });
