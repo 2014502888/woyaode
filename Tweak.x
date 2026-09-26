@@ -109,11 +109,11 @@ static id PJMakeJokerMenuItem(id wrap) {
 }
 
 %hook TextMessageCellView
-- (NSArray *)noteMenuForCellView:(id)cellView {
-    NSArray *orig = %orig(cellView);
+- (NSArray *)operationMenuItems {
+    NSArray *orig = %orig;
     if (!JokerEnabled()) return orig;
     @try {
-        id wrap = PJGetMsgWrap(cellView ?: self);
+        id wrap = PJGetMsgWrap(self);
         if (!wrap) return orig;
         id item = PJMakeJokerMenuItem(wrap);
         if (!item) return orig;
@@ -125,11 +125,11 @@ static id PJMakeJokerMenuItem(id wrap) {
 %end
 
 %hook ImageMessageCellView
-- (NSArray *)noteMenuForCellView:(id)cellView {
-    NSArray *orig = %orig(cellView);
+- (NSArray *)operationMenuItems {
+    NSArray *orig = %orig;
     if (!JokerEnabled()) return orig;
     @try {
-        id wrap = PJGetMsgWrap(cellView ?: self);
+        id wrap = PJGetMsgWrap(self);
         if (!wrap) return orig;
         id item = PJMakeJokerMenuItem(wrap);
         if (!item) return orig;
