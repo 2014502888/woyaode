@@ -83,11 +83,53 @@ static void JokerShowTextEditor(id msg, UIViewController *host) {
     UIAlertAction *done = [UIAlertAction actionWithTitle:@"完成" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
         NSString *t = alert.textFields.firstObject.text;
         SetJokerText(msg, t);
-        // 直接修改wrap的m_nsContent
+        // 1. 修改wrap的m_nsContent
         [msg setValue:t forKey:@"m_nsContent"];
-        // 找到对应的cell,刷新一下
+        // 2. 找到对应的cell,刷新viewModel
         dispatch_async(dispatch_get_main_queue(), ^{
-            [[NSNotificationCenter defaultCenter] postNotificationName:@"JokerTextChanged" object:nil];
+            // 遍历所有window,找到聊天页面的tableView
+            UIApplication *app = [UIApplication sharedApplication];
+            for (UIWindow *window in app.windows) {
+                // 递归找tableView
+                NSMutableArray *queue = [NSMutableArray arrayWithObject:window];
+                while ([queue count] > 0) {
+                    UIView *v = [queue objectAtIndex:0];
+                    [queue removeObjectAtIndex:0];
+                    if ([v isKindOfClass:[UITableView class]]) {
+                        UITableView *tv = (UITableView *)v;
+                        // 遍历可见的cell
+                        for (UITableViewCell *cell in [tv visibleCells]) {
+                            // 检查这个cell的wrap是不是我们要改的
+                            id cellWrap = PJGetMsgWrap(cell);
+                            if (cellWrap == msg) {
+                                // 找到了!刷新这个cell的viewModel
+                                @try {
+                                    id oldVM = [cell valueForKey:@"viewModel"];
+                                    if (!oldVM) oldVM = [cell valueForKey:@"m_viewModel"];
+                                    if (oldVM) {
+                                        // 从旧VM取contact和chatContact
+                                        id contact = [oldVM valueForKey:@"m_contact"];
+                                        id chatContact = [oldVM valueForKey:@"m_chatContact"];
+                                        // 创建新VM
+                                        Class vmClass = [oldVM class];
+                                        id newVM = [[vmClass alloc] performSelector:@selector(initWithMessageWrap:contact:chatContact:) withObject:msg withObject:contact withObject:chatContact];
+                                        if (newVM) {
+                                            [cell setValue:newVM forKey:@"m_viewModel"];
+                                            // 调用刷新布局
+                                            [cell setNeedsLayout];
+                                        }
+                                    }
+                                } @catch(id e) {}
+                                break;
+                            }
+                        }
+                    }
+                    NSArray *subs = [v subviews];
+                    for (NSInteger i = 0; i < [subs count]; i++) {
+                        [queue addObject:[subs objectAtIndex:i]];
+                    }
+                }
+            }
         });
     }];
     [alert addAction:cancel];
