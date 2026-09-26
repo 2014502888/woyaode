@@ -131,15 +131,11 @@ static id makeJokerMenuItem(id wrap) {
         if (!wrap) return;
         NSString *replacement = GetJokerText(wrap);
         if (!replacement) return;
-        UIView *selfView = (UIView *)self;
-        NSArray *subs = [selfView subviews];
-        for (NSInteger i = 0; i < [subs count]; i++) {
-            UIView *sub = [subs objectAtIndex:i];
-            if ([sub isKindOfClass:[UILabel class]]) {
-                UILabel *textLabel = (UILabel *)sub;
-                textLabel.text = replacement;
-                break;
-            }
+        // 直接找消息内容的textLabel
+        UILabel *textLabel = [self valueForKey:@"m_textLabel"];
+        if (!textLabel) textLabel = [self valueForKey:@"contentTextLabel"];
+        if (textLabel) {
+            textLabel.text = replacement;
         }
     } @catch(id e) {}
 }
