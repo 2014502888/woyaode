@@ -113,26 +113,13 @@ static id PJMakeJokerMenuItem(id wrap) {
     NSArray *orig = %orig(items, cellView);
     if (!JokerEnabled()) return orig;
     @try {
-        Class mmItem = NSClassFromString(@"MMMenuItem");
-        if (!mmItem) return orig;
-        SEL initSel = @selector(initWithTitle:icon:action:);
-        NSMethodSignature *sig = [mmItem instanceMethodSignatureForSelector:initSel];
-        if (!sig) return orig;
-        id obj = [[mmItem alloc] init];
-        void (^block)(void) = ^{ };
-        NSInvocation *inv = [NSInvocation invocationWithMethodSignature:sig];
-        [inv setSelector:initSel];
-        [inv setTarget:obj];
-        NSString *title = @"测试小丑";
-        UIImage *icon = [UIImage systemImageNamed:@"pencil"];
-        [inv setArgument:&title atIndex:2];
-        [inv setArgument:&icon atIndex:3];
-        [inv setArgument:&block atIndex:4];
-        [inv invoke];
-        id item;
-        [inv getReturnValue:&item];
+        Class cellMgrClass = NSClassFromString(@"WCTableViewNormalCellManager");
+        if (!cellMgrClass) return orig;
+        id target = [NSObject new];
+        SEL sel = @selector(onJokerTapped);
+        id cellMgr = ((id (*)(id, SEL, SEL, id, NSString*))objc_msgSend)(cellMgrClass, @selector(normalCellForSel:target:title:), sel, target, @"小丑");
         NSMutableArray *m = [orig mutableCopy] ?: [NSMutableArray array];
-        [m addObject:item];
+        [m addObject:cellMgr];
         return m;
     } @catch(id e) { return orig; }
 }
