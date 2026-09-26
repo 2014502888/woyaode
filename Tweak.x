@@ -166,6 +166,16 @@ static UITableView *PJFindTableView(UIView *view) {
     }
     return nil;
 }
+@interface PJButtonTarget : NSObject
+@end
+@implementation PJButtonTarget
+- (void)onTap {
+    PJSettingsViewController *s = [PJSettingsViewController new];
+    UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:s];
+    [PJTopmostVC() presentViewController:nav animated:YES completion:nil];
+}
+@end
+
 static void PJAddSettingsEntry(UIViewController *vc) {
     UITableView *tv = PJFindTableView(vc.view);
     if (!tv) return;
@@ -176,11 +186,9 @@ static void PJAddSettingsEntry(UIViewController *vc) {
     btn.accessibilityLabel = @"pj_entry";
     [btn setTitle:@"增强设置(Joker)" forState:UIControlStateNormal];
     btn.titleLabel.font = [UIFont systemFontOfSize:16];
-    [btn addTarget:^{
-        PJSettingsViewController *s = [PJSettingsViewController new];
-        UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:s];
-        [PJTopmostVC() presentViewController:nav animated:YES completion:nil];
-    } forControlEvents:UIControlEventTouchUpInside];
+    PJButtonTarget *t = [PJButtonTarget new];
+    objc_setAssociatedObject(btn, "pj_t", t, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    [btn addTarget:t action:@selector(onTap) forControlEvents:UIControlEventTouchUpInside];
     tv.tableFooterView = btn;
 }
 
