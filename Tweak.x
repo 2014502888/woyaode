@@ -116,9 +116,7 @@ static id makeJokerMenuItem(id wrap) {
     NSArray *orig = %orig;
     if (!JokerEnabled()) return orig;
     @try {
-        id wrap = PJGetMsgWrap(self);
-        if (!wrap) return orig;
-        id item = makeJokerMenuItem(wrap);
+        id item = makeJokerMenuItem(nil);
         if (!item) return orig;
         NSMutableArray *m = [orig mutableCopy] ?: [NSMutableArray array];
         [m addObject:item];
@@ -132,9 +130,7 @@ static id makeJokerMenuItem(id wrap) {
     NSArray *orig = %orig;
     if (!JokerEnabled()) return orig;
     @try {
-        id wrap = PJGetMsgWrap(self);
-        if (!wrap) return orig;
-        id item = makeJokerMenuItem(wrap);
+        id item = makeJokerMenuItem(nil);
         if (!item) return orig;
         NSMutableArray *m = [orig mutableCopy] ?: [NSMutableArray array];
         [m addObject:item];
