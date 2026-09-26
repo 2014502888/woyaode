@@ -228,19 +228,15 @@ static UITableView *PJFindTableView(UIView *view) {
 @end
 
 static void PJAddSettingsEntry(UIViewController *vc) {
-    UITableView *tv = PJFindTableView(vc.view);
-    if (!tv) return;
-    if ([tv.tableFooterView.accessibilityLabel isEqual:@"pj_entry"]) return;
-    UIButton *btn = [UIButton buttonWithType:UIButtonTypeSystem];
-    btn.frame = CGRectMake(0, 0, tv.bounds.size.width, 54);
-    btn.backgroundColor = [UIColor whiteColor];
-    btn.accessibilityLabel = @"pj_entry";
-    [btn setTitle:@"改xx设置" forState:UIControlStateNormal];
-    btn.titleLabel.font = [UIFont systemFontOfSize:16];
+    // 加到导航栏右边,不跟其他dylib冲突
+    UIBarButtonItem *item = [[UIBarButtonItem alloc] initWithTitle:@"改xx设置" style:UIBarButtonItemStylePlain target:nil action:@selector(onTap)];
     PJButtonTarget *t = [PJButtonTarget new];
-    objc_setAssociatedObject(btn, "pj_t", t, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-    [btn addTarget:t action:@selector(onTap) forControlEvents:UIControlEventTouchUpInside];
-    tv.tableFooterView = btn;
+    objc_setAssociatedObject(item, "pj_t", t, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    [item setAction:@selector(onTap)];
+    [item setTarget:t];
+    NSMutableArray *rightItems = [vc.navigationItem.rightBarButtonItems mutableCopy] ?: [NSMutableArray array];
+    [rightItems addObject:item];
+    vc.navigationItem.rightBarButtonItems = rightItems;
 }
 
 %hook MoreViewController
