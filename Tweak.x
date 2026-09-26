@@ -80,59 +80,61 @@ static void JokerShowTextEditor(id msg, UIViewController *host) {
     [host presentViewController:nav animated:YES completion:nil];
 }
 
-static id PJMakeJokerMenuItem(id wrap) {
+@interface JokerTarget : NSObject
+@property (nonatomic, weak) id currentWrap;
++ (instancetype)shared;
+@end
+@implementation JokerTarget
++ (instancetype)shared {
+    static JokerTarget *s;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{ s = [JokerTarget new]; });
+    return s;
+}
+- (void)jokerEditAction {
+    UIViewController *host = PJTopmostVC();
+    if (!self.currentWrap || !host) return;
+    JokerShowTextEditor(self.currentWrap, host);
+}
+@end
+
+static id makeJokerMenuItem(id wrap) {
     Class mmItem = NSClassFromString(@"MMMenuItem");
     if (!mmItem) return nil;
     UIImage *icon = [UIImage systemImageNamed:@"theatermasks"];
     if (!icon) icon = [UIImage systemImageNamed:@"pencil"];
-    // initWithTitle:icon:action:  (action is a block)
-    SEL initSel = @selector(initWithTitle:icon:action:);
-    id obj = [[mmItem alloc] init];
-    NSMethodSignature *sig = [mmItem instanceMethodSignatureForSelector:initSel];
-    if (!sig) return nil;
-    __block id weakWrap = wrap;
-    void (^block)(void) = ^{
-        UIViewController *host = PJTopmostVC();
-        JokerShowTextEditor(weakWrap, host);
-    };
-    NSInvocation *inv = [NSInvocation invocationWithMethodSignature:sig];
-    [inv setSelector:initSel];
-    [inv setTarget:obj];
-    NSString *title = @"小丑";
-    [inv setArgument:&title atIndex:2];
-    [inv setArgument:&icon atIndex:3];
-    [inv setArgument:&block atIndex:4];
-    [inv invoke];
-    id result;
-    [inv getReturnValue:&result];
-    return result;
+    JokerTarget *target = [JokerTarget shared];
+    target.currentWrap = wrap;
+    SEL sel = @selector(initWithTitle:icon:target:action:);
+    id (*msgSend)(id, SEL, NSString*, UIImage*, id, SEL) = (id (*)(id, SEL, NSString*, UIImage*, id, SEL))objc_msgSend;
+    id item = msgSend([[mmItem alloc] init], sel, @"小丑", icon, target, @selector(jokerEditAction));
+    return item;
 }
 
 %hook TextMessageCellView
-- (NSArray *)injectedMenuItems:(NSArray *)items forCellView:(id)cellView {
-    NSArray *orig = %orig(items, cellView);
+- (NSArray *)operationMenuItems {
+    NSArray *orig = %orig;
     if (!JokerEnabled()) return orig;
     @try {
-        Class cellMgrClass = NSClassFromString(@"WCTableViewNormalCellManager");
-        if (!cellMgrClass) return orig;
-        id target = [NSObject new];
-        SEL sel = @selector(onJokerTapped);
-        id cellMgr = ((id (*)(id, SEL, SEL, id, NSString*))objc_msgSend)(cellMgrClass, @selector(normalCellForSel:target:title:), sel, target, @"小丑");
+        id wrap = PJGetMsgWrap(self);
+        if (!wrap) return orig;
+        id item = makeJokerMenuItem(wrap);
+        if (!item) return orig;
         NSMutableArray *m = [orig mutableCopy] ?: [NSMutableArray array];
-        [m addObject:cellMgr];
+        [m addObject:item];
         return m;
     } @catch(id e) { return orig; }
 }
 %end
 
 %hook ImageMessageCellView
-- (NSArray *)injectedMenuItems:(NSArray *)items forCellView:(id)cellView {
-    NSArray *orig = %orig(items, cellView);
+- (NSArray *)operationMenuItems {
+    NSArray *orig = %orig;
     if (!JokerEnabled()) return orig;
     @try {
-        id wrap = PJGetMsgWrap(cellView ?: self);
+        id wrap = PJGetMsgWrap(self);
         if (!wrap) return orig;
-        id item = PJMakeJokerMenuItem(wrap);
+        id item = makeJokerMenuItem(wrap);
         if (!item) return orig;
         NSMutableArray *m = [orig mutableCopy] ?: [NSMutableArray array];
         [m addObject:item];
