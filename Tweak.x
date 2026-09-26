@@ -98,17 +98,7 @@ static void JokerShowTextEditor(id msg, UIViewController *host) {
         // 直接修改wrap的m_nsContent
         [msg setValue:t forKey:@"m_nsContent"];
         // 找到对应的cell,刷新一下
-        dispatch_async(dispatch_get_main_queue(), ^{
-            @try {
-                UIWindow *win = [UIApplication sharedApplication].keyWindow;
-                for (UIView *v in win.subviews) {
-                    if ([v isKindOfClass:[UITableView class]]) { [(UITableView *)v reloadData]; break; }
-                    for (UIView *sv in v.subviews) {
-                        if ([sv isKindOfClass:[UITableView class]]) { [(UITableView *)sv reloadData]; break; }
-                    }
-                }
-            } @catch(id e) {}
-        });
+ 
     }];
     [alert addAction:cancel];
     [alert addAction:done];
