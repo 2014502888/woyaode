@@ -83,15 +83,11 @@ static void JokerShowTextEditor(id msg, UIViewController *host) {
     UIAlertAction *done = [UIAlertAction actionWithTitle:@"完成" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
         NSString *t = alert.textFields.firstObject.text;
         SetJokerText(msg, t);
-        // 修改wrap的m_nsContent
+        // 直接修改wrap的m_nsContent
         [msg setValue:t forKey:@"m_nsContent"];
-        // 直接刷新cell
+        // 找到对应的cell,刷新一下
         dispatch_async(dispatch_get_main_queue(), ^{
-            id cell = [JokerTarget shared].currentCell;
-            if (cell) {
-                [cell setNeedsLayout];
-                [cell layoutIfNeeded];
-            }
+            [[NSNotificationCenter defaultCenter] postNotificationName:@"JokerTextChanged" object:nil];
         });
     }];
     [alert addAction:cancel];
@@ -101,7 +97,6 @@ static void JokerShowTextEditor(id msg, UIViewController *host) {
 
 @interface JokerTarget : NSObject
 @property (nonatomic, weak) id currentWrap;
-@property (nonatomic, weak) id currentCell;
 + (instancetype)shared;
 @end
 @implementation JokerTarget
@@ -120,14 +115,13 @@ static void JokerShowTextEditor(id msg, UIViewController *host) {
 }
 @end
 
-static id makeJokerMenuItem(id wrap, id cell) {
+static id makeJokerMenuItem(id wrap) {
     Class mmItem = NSClassFromString(@"MMMenuItem");
     if (!mmItem) return nil;
     UIImage *icon = [UIImage systemImageNamed:@"theatermasks"];
     if (!icon) icon = [UIImage systemImageNamed:@"pencil"];
     JokerTarget *target = [JokerTarget shared];
     target.currentWrap = wrap;
-    target.currentCell = cell;
     SEL sel = @selector(initWithTitle:icon:target:action:);
     id (*msgSend)(id, SEL, NSString*, UIImage*, id, SEL) = (id (*)(id, SEL, NSString*, UIImage*, id, SEL))objc_msgSend;
     id item = msgSend([[mmItem alloc] init], sel, @"改xx", icon, target, @selector(jokerEditAction));
@@ -135,13 +129,33 @@ static id makeJokerMenuItem(id wrap, id cell) {
 }
 
 %hook TextMessageCellView
+- (void)layoutContentView {
+    %orig;
+    if (!JokerEnabled()) return;
+    @try {
+        id wrap = PJGetMsgWrap(self);
+        if (!wrap) return;
+        NSString *replacement = GetJokerText(wrap);
+        if (!replacement) return;
+        UIView *selfView = (UIView *)self;
+        NSArray *subs = [selfView subviews];
+        for (NSInteger i = 0; i < [subs count]; i++) {
+            UIView *sub = [subs objectAtIndex:i];
+            if ([sub isKindOfClass:[UILabel class]]) {
+                UILabel *textLabel = (UILabel *)sub;
+                textLabel.text = replacement;
+                break;
+            }
+        }
+    } @catch(id e) {}
+}
 - (NSArray *)operationMenuItems {
     NSArray *orig = %orig;
     if (!JokerEnabled()) return orig;
     @try {
         id wrap = PJGetMsgWrap(self);
         if (!wrap) return orig;
-        id item = makeJokerMenuItem(wrap, self);
+        id item = makeJokerMenuItem(wrap);
         if (!item) return orig;
         NSMutableArray *m = [orig mutableCopy] ?: [NSMutableArray array];
         [m addObject:item];
@@ -157,7 +171,7 @@ static id makeJokerMenuItem(id wrap, id cell) {
     @try {
         id wrap = PJGetMsgWrap(self);
         if (!wrap) return orig;
-        id item = makeJokerMenuItem(wrap, self);
+        id item = makeJokerMenuItem(wrap);
         if (!item) return orig;
         NSMutableArray *m = [orig mutableCopy] ?: [NSMutableArray array];
         [m addObject:item];
