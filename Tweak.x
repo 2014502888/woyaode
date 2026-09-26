@@ -206,7 +206,8 @@ static void PJAddSettingsEntry(UIViewController *vc) {
 %hook MoreViewController
 - (void)viewDidAppear:(BOOL)animated {
     %orig;
-    PJAddSettingsEntry(self);
+    UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"测试" message:@"hook生效了" delegate:nil cancelButtonTitle:@"确定" otherButtonTitles:nil];
+    [alert show];
 }
 %end
 
