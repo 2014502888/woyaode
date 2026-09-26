@@ -73,6 +73,9 @@ static id PJGetMsgWrap(id cell) {
 static void JokerShowTextEditor(id msg, UIViewController *host) {
     if (!msg || !host) return;
     // === DUMP ===
+    UIAlertController *vcA = [UIAlertController alertControllerWithTitle:@"VC" message:[NSString stringWithFormat:@"host=%@\nmsg=%@", NSStringFromClass([host class]), NSStringFromClass([msg class])] preferredStyle:UIAlertControllerStyleAlert];
+    [vcA addAction:[UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil]];
+    [host presentViewController:vcA animated:YES completion:nil];
     NSMutableString *dump = [NSMutableString string];
     [dump appendFormat:@"msg class: %@\n", NSStringFromClass([msg class])];
     @try {
