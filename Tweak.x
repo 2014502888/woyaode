@@ -83,7 +83,7 @@ static void JokerShowTextEditor(id msg, UIViewController *host) {
         }
         free(mp);
     } @catch(id e) {}
-    [dump writeToFile:@"/var/mobile/Documents/dump.txt" atomically:YES encoding:NSUTF8StringEncoding error:nil];
+    NSString *dp = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) firstObject]; [dump writeToFile:[dp stringByAppendingPathComponent:@"dump.txt"] atomically:YES encoding:NSUTF8StringEncoding error:nil];
     NSString *originalText = [msg valueForKey:@"m_nsContent"];
     if (!originalText) originalText = GetJokerText(msg) ?: @"";
     
