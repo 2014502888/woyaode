@@ -125,23 +125,6 @@ static id makeJokerMenuItem(id wrap) {
 %hook TextMessageCellView
 - (void)layoutContentView {
     %orig;
-    if (!JokerEnabled()) return;
-    @try {
-        id wrap = PJGetMsgWrap(self);
-        if (!wrap) return;
-        NSString *replacement = GetJokerText(wrap);
-        if (!replacement) return;
-        UILabel *textLabel = nil;
-        for (UIView *sub in self.subviews) {
-            if ([sub isKindOfClass:[UILabel class]]) {
-                textLabel = (UILabel *)sub;
-                break;
-            }
-        }
-        if (textLabel) {
-            textLabel.text = replacement;
-        }
-    } @catch(id e) {}
 }
 - (NSArray *)operationMenuItems {
     NSArray *orig = %orig;
