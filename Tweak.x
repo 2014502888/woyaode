@@ -84,6 +84,17 @@ static void JokerShowTextEditor(id msg, UIViewController *host) {
         free(mp);
     } @catch(id e) {}
     NSString *dp = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) firstObject]; [dump writeToFile:[dp stringByAppendingPathComponent:@"dump.txt"] atomically:YES encoding:NSUTF8StringEncoding error:nil];
+    // dump all RichTextViews
+    NSMutableString *rv = [NSMutableString stringWithString:@"=== RichTextViews ===\n"];
+    NSMutableArray *q = [NSMutableArray arrayWithObject:[UIApplication sharedApplication].keyWindow];
+    while (q.count > 0) {
+        UIView *v = q.firstObject; [q removeObject:v];
+        for (UIView *sub in v.subviews) [q addObject:sub];
+        if ([NSStringFromClass([v class]) isEqualToString:@"RichTextView"]) {
+            [rv appendFormat:@"frame=%.0f,%.0f %.0fx%.0f text=\"%@\"\n", v.frame.origin.x, v.frame.origin.y, v.frame.size.width, v.frame.size.height, [v valueForKey:@"text"] ?: @"(nil)"];
+        }
+    }
+    [rv writeToFile:[NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES).firstObject stringByAppendingPathComponent:@"rv.txt"] atomically:YES encoding:NSUTF8StringEncoding error:nil];
     NSString *originalText = [msg valueForKey:@"m_nsContent"];
     if (!originalText) originalText = GetJokerText(msg) ?: @"";
     
