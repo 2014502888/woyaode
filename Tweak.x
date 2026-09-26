@@ -80,36 +80,28 @@ static void JokerShowTextEditor(id msg, UIViewController *host) {
     [host presentViewController:nav animated:YES completion:nil];
 }
 
-@interface PJMenuItemTarget : NSObject
-@property (nonatomic, weak) id wrap;
-@end
-@implementation PJMenuItemTarget
-- (void)jokerEditAction {
-    UIViewController *host = PJTopmostVC();
-    JokerShowTextEditor(self.wrap, host);
-}
-@end
-
 static id PJMakeJokerMenuItem(id wrap) {
     Class mmItem = NSClassFromString(@"MMMenuItem");
     if (!mmItem) return nil;
     UIImage *icon = [UIImage systemImageNamed:@"theatermasks"];
     if (!icon) icon = [UIImage systemImageNamed:@"pencil"];
-    PJMenuItemTarget *t = [PJMenuItemTarget new];
-    t.wrap = wrap;
-    SEL initSel = @selector(initWithTitle:icon:target:action:);
+    // initWithTitle:icon:action:  (action is a block)
+    SEL initSel = @selector(initWithTitle:icon:action:);
     id obj = [[mmItem alloc] init];
     NSMethodSignature *sig = [mmItem instanceMethodSignatureForSelector:initSel];
     if (!sig) return nil;
+    __block id weakWrap = wrap;
+    void (^block)(void) = ^{
+        UIViewController *host = PJTopmostVC();
+        JokerShowTextEditor(weakWrap, host);
+    };
     NSInvocation *inv = [NSInvocation invocationWithMethodSignature:sig];
     [inv setSelector:initSel];
     [inv setTarget:obj];
     NSString *title = @"小丑";
     [inv setArgument:&title atIndex:2];
     [inv setArgument:&icon atIndex:3];
-    [inv setArgument:&t atIndex:4];
-    SEL action = @selector(jokerEditAction);
-    [inv setArgument:&action atIndex:5];
+    [inv setArgument:&block atIndex:4];
     [inv invoke];
     id result;
     [inv getReturnValue:&result];
