@@ -135,46 +135,6 @@ static id makeJokerMenuItem(id wrap, id cell) {
 }
 
 %hook TextMessageCellView
-- (void)layoutContentView {
-    %orig;
-    if (!JokerEnabled()) return;
-    @try {
-        id wrap = PJGetMsgWrap(self);
-        if (!wrap) return;
-        NSString *replacement = GetJokerText(wrap);
-        if (!replacement) return;
-        __block UIView *selfView = (UIView *)self;
-        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-            // 递归找所有UILabel
-            NSMutableArray *allLabels = [NSMutableArray array];
-            NSMutableArray *queue = [NSMutableArray arrayWithObject:selfView];
-            while ([queue count] > 0) {
-                UIView *v = [queue objectAtIndex:0];
-                [queue removeObjectAtIndex:0];
-                if ([v isKindOfClass:[UILabel class]]) {
-                    [allLabels addObject:v];
-                }
-                NSArray *subs = [v subviews];
-                for (NSInteger i = 0; i < [subs count]; i++) {
-                    [queue addObject:[subs objectAtIndex:i]];
-                }
-            }
-            // 找宽度最大的那个label
-            UILabel *best = nil;
-            CGFloat bestWidth = 0;
-            for (NSInteger i = 0; i < [allLabels count]; i++) {
-                UILabel *l = [allLabels objectAtIndex:i];
-                if (CGRectGetWidth(l.frame) > bestWidth) {
-                    bestWidth = CGRectGetWidth(l.frame);
-                    best = l;
-                }
-            }
-            if (best) {
-                best.text = replacement;
-            }
-        });
-    } @catch(id e) {}
-}
 - (NSArray *)operationMenuItems {
     NSArray *orig = %orig;
     if (!JokerEnabled()) return orig;
