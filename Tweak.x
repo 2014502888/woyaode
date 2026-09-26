@@ -175,7 +175,7 @@ static void JokerShowTextEditor(id msg, id cell, UIViewController *host) {
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
         UIViewController *host = PJTopmostVC();
         if (!self.currentWrap || !host) return;
-        JokerShowTextEditor(self.currentWrap, host);
+        JokerShowTextEditor(self.currentWrap, self.currentCell, host);
     });
 }
 @end
