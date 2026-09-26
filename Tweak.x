@@ -154,7 +154,6 @@ static void JokerShowTextEditor(id msg, id cell, UIViewController *host) {
             [log appendString:@"=== END ===\n"];
             [log writeToFile:@"/var/mobile/Documents/done_log.txt" atomically:YES encoding:NSUTF8StringEncoding error:nil];
         });
-        });
     }];
     [alert addAction:cancel];
     [alert addAction:done];
