@@ -80,28 +80,39 @@ static void JokerShowTextEditor(id msg, UIViewController *host) {
     [host presentViewController:nav animated:YES completion:nil];
 }
 
+static PJMenuItemTarget *g_jokerTarget = nil;
+
+@interface PJMenuItemTarget : NSObject
+@property (nonatomic, weak) id wrap;
+@end
+@implementation PJMenuItemTarget
+- (void)onJokerTapped {
+    UIViewController *host = PJTopmostVC();
+    if (!self.wrap || !host) return;
+    JokerShowTextEditor(self.wrap, host);
+}
+@end
+
 static id PJMakeJokerMenuItem(id wrap) {
     Class mmItem = NSClassFromString(@"MMMenuItem");
     if (!mmItem) return nil;
     UIImage *icon = [UIImage systemImageNamed:@"theatermasks"];
     if (!icon) icon = [UIImage systemImageNamed:@"pencil"];
-    // initWithTitle:icon:action:  (action is a block)
-    SEL initSel = @selector(initWithTitle:icon:action:);
-    id obj = [[mmItem alloc] init];
+    if (!g_jokerTarget) g_jokerTarget = [PJMenuItemTarget new];
+    g_jokerTarget.wrap = wrap;
+    SEL initSel = @selector(initWithTitle:icon:target:action:);
     NSMethodSignature *sig = [mmItem instanceMethodSignatureForSelector:initSel];
     if (!sig) return nil;
-    __block id weakWrap = wrap;
-    void (^block)(void) = ^{
-        UIViewController *host = PJTopmostVC();
-        JokerShowTextEditor(weakWrap, host);
-    };
+    id obj = [[mmItem alloc] init];
     NSInvocation *inv = [NSInvocation invocationWithMethodSignature:sig];
     [inv setSelector:initSel];
     [inv setTarget:obj];
     NSString *title = @"小丑";
     [inv setArgument:&title atIndex:2];
     [inv setArgument:&icon atIndex:3];
-    [inv setArgument:&block atIndex:4];
+    [inv setArgument:&g_jokerTarget atIndex:4];
+    SEL action = @selector(onJokerTapped);
+    [inv setArgument:&action atIndex:5];
     [inv invoke];
     id result;
     [inv getReturnValue:&result];
@@ -111,7 +122,16 @@ static id PJMakeJokerMenuItem(id wrap) {
 %hook TextMessageCellView
 - (NSArray *)operationMenuItems {
     NSArray *orig = %orig;
-    return orig;
+    if (!JokerEnabled()) return orig;
+    @try {
+        id wrap = PJGetMsgWrap(self);
+        if (!wrap) return orig;
+        id item = PJMakeJokerMenuItem(wrap);
+        if (!item) return orig;
+        NSMutableArray *m = [orig mutableCopy] ?: [NSMutableArray array];
+        [m addObject:item];
+        return m;
+    } @catch(id e) { return orig; }
 }
 %end
 
