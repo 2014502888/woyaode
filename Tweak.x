@@ -72,10 +72,17 @@ static id PJGetMsgWrap(id cell) {
 
 static void JokerShowTextEditor(id msg, UIViewController *host) {
     if (!msg || !host) return;
+    // 从wrap里取出原始文字内容
+    NSString *originalText = [msg valueForKey:@"m_nsContent"];
+    if (!originalText) originalText = GetJokerText(msg) ?: @"";
     JokerEditViewController *e = [JokerEditViewController new];
-    e.originalText = GetJokerText(msg) ?: @"";
+    e.originalText = originalText;
     __block id weakMsg = msg;
-    e.onFinish = ^(NSString *t) { SetJokerText(weakMsg, t); };
+    e.onFinish = ^(NSString *t) {
+        SetJokerText(weakMsg, t);
+        // 写回wrap的m_nsContent
+        [weakMsg setValue:t forKey:@"m_nsContent"];
+    };
     UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:e];
     [host presentViewController:nav animated:YES completion:nil];
 }
@@ -93,8 +100,9 @@ static void JokerShowTextEditor(id msg, UIViewController *host) {
 }
 - (void)jokerEditAction {
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-        UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"调试" message:[NSString stringWithFormat:@"wrap=%@", self.currentWrap] delegate:nil cancelButtonTitle:@"确定" otherButtonTitles:nil];
-        [alert show];
+        UIViewController *host = PJTopmostVC();
+        if (!self.currentWrap || !host) return;
+        JokerShowTextEditor(self.currentWrap, host);
     });
 }
 @end
