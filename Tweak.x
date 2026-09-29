@@ -110,13 +110,27 @@ static void JokerShowTextEditor(id msg, id cell, UIViewController *host) {
         [msg setValue:t forKey:@"m_nsContent"];
         dispatch_async(dispatch_get_main_queue(), ^{
             @try {
-                UIView *v = (UIView *)cell;
+                [msg setValue:t forKey:@"m_nsBeforeDisplayContent"];
+                [msg setValue:t forKey:@"m_nsLastDisplayContent"];
+                UIView *cv = (UIView *)cell;
+                NSMutableArray *q = [NSMutableArray arrayWithObject:cv];
+                while (q.count > 0) {
+                    UIView *v = q.firstObject; [q removeObject:v];
+                    for (UIView *sub in v.subviews) [q addObject:sub];
+                    if ([v respondsToSelector:@selector(resetLayoutCache)]) [v performSelector:@selector(resetLayoutCache)];
+                    if ([v respondsToSelector:@selector(setText:)]) [v performSelector:@selector(setText:) withObject:t];
+                }
+                UIView *v = cv;
                 while (v) {
-                    if ([v isKindOfClass:[UITableView class]]) { [(UITableView *)v reloadData]; break; }
+                    if ([v isKindOfClass:[UITableView class]]) {
+                        UITableView *tv = (UITableView *)v;
+                        NSIndexPath *ip = [tv indexPathForCell:(UITableViewCell *)cv];
+                        if (ip) [tv reloadRowsAtIndexPaths:@[ip] withRowAnimation:UITableViewRowAnimationNone];
+                        break;
+                    }
                     v = v.superview;
                 }
             } @catch(id e) {}
-        });
     }];
     [alert addAction:cancel];
     [alert addAction:done];
