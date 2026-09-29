@@ -297,14 +297,25 @@ static void PJAddSettingsEntry(UIViewController *vc) {
     @autoreleasepool { }
 }
 
-%hook UILabel
-- (void)setAttributedText:(NSAttributedString *)text {
+%hook RichTextView
+- (void)drawLayer:(CALayer *)layer inContext:(CGContextRef)ctx {
     %orig;
-    if (self.frame.size.width > 50) {
-        NSMutableString *s = [NSMutableString stringWithFormat:@"setAttributedText: %@\n", text.string];
-        [s appendFormat:@"frame=%.0f,%.0f %.0fx%.0f\nclass=%@\n", self.frame.origin.x, self.frame.origin.y, self.frame.size.width, self.frame.size.height, NSStringFromClass([self class])];
+    if (self.frame.size.width > 50 && self.frame.size.height > 10) {
+        NSMutableString *s = [NSMutableString stringWithFormat:@"drawLayer frame=%.0f,%.0f %.0fx%.0f\n", self.frame.origin.x, self.frame.origin.y, self.frame.size.width, self.frame.size.height];
+        // 打印所有ivar
+        unsigned int pc; Ivar *ivars = class_copyIvarList([self class], &pc);
+        for (unsigned int i = 0; i < pc; i++) {
+            const char *name = ivar_getName(ivars[i]);
+            @try {
+                id val = object_getIvar(self, ivars[i]);
+                if (val && [val isKindOfClass:[NSString class]]) {
+                    [s appendFormat:@"  %s = %@\n", name, val];
+                }
+            } @catch(id e) {}
+        }
+        free(ivars);
         NSString *dp = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) firstObject];
-        [s writeToFile:[dp stringByAppendingPathComponent:@"hook.txt"] atomically:YES encoding:NSUTF8StringEncoding error:nil];
+        [s writeToFile:[dp stringByAppendingPathComponent:@"draw.txt"] atomically:YES encoding:NSUTF8StringEncoding error:nil];
     }
 }
 %end
