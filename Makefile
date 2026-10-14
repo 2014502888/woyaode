@@ -1,3 +1,4 @@
+export ARCHS = arm64
 export THEOS ?= $(THEOS)
 # 不写死 SDK 版本, 用 runner 上 Xcode 默认 SDK(避免 iPhoneOS15.0.sdk 不存在)
 TARGET := iphone:clang:latest:15.0
